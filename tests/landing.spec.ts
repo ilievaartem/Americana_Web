@@ -16,6 +16,15 @@ test('validates required lead fields', async ({ page }) => {
   await expect(page.getByTestId('form-error')).toContainText('номер телефону')
 })
 
+test('shows the child-specific testing fields', async ({ page }) => {
+  await page.goto('/#contact')
+  await page.getByTestId('student-child').click()
+  await expect(page.getByTestId('lead-child-name')).toBeVisible()
+  await expect(page.getByTestId('lead-child-age')).toBeVisible()
+  await expect(page.getByTestId('lead-contact-person')).toBeVisible()
+  await expect(page.getByText('Контактний номер батьків')).toBeVisible()
+})
+
 test('opens FAQ answers', async ({ page }) => {
   await page.goto('/#faq')
   await page.getByTestId('faq-1').click()

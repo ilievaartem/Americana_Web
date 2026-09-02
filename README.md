@@ -4,8 +4,9 @@
 
 ## Локальний запуск
 
-```bash
+```powershell
 npm install
+Copy-Item .env.example .env
 npm run dev
 ```
 
@@ -24,9 +25,18 @@ docker compose up --build
 
 Сайт буде доступний на `http://localhost:8080`.
 
-## Форма заявок
+## Відправлення заявок на Gmail
 
-Додайте `VITE_LEAD_ENDPOINT` у `.env`, якщо є CRM або webhook. Endpoint має приймати JSON методом POST. Без endpoint форма безпечно відкриває поштовий застосунок користувача з уже заповненою заявкою.
+Форма надсилає заявки через серверний endpoint `POST /api/leads`. Тестовий одержувач уже заданий як `aartemiliev@gmail.com`.
+
+1. Скопіюйте `.env.example` у `.env`.
+2. Увімкніть двоетапну перевірку Google для пошти-відправника.
+3. Створіть Google App Password.
+4. Заповніть `SMTP_USER`, `SMTP_PASS` і `SMTP_FROM` у `.env`.
+
+`SMTP_USER` — Gmail-відправник, `SMTP_PASS` — його App Password, `SMTP_FROM` має містити ту саму адресу. `LEAD_RECIPIENT` — адреса, куди приходять заявки. Після зміни `.env` повністю перезапустіть dev-сервер. У консолі має з’явитися `SMTP connection verified`.
+
+Пароль не потрапляє у frontend або Git. Для автоматичних тестів використовується mock-транспорт — реальні листи не надсилаються.
 
 ## Перевірки
 

@@ -1,10 +1,8 @@
 node_modules
-.npm-cache
 dist
 server-dist
 test-results
 playwright-report
+.git
 .env
-.env.local
 *.log
-*.tsbuildinfo

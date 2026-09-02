@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useId, useState } from 'react'
 import {
   ArrowRight, BookOpen, Check, ChevronDown, Clock3,
-  Facebook, GraduationCap, Languages, MapPin, Menu, MessageCircle,
+  Facebook, GraduationCap, Instagram, Languages, MapPin, Menu, MessageCircle,
   Phone, Play, Send, Sparkles, Star, Target, Users, X, Zap,
 } from 'lucide-react'
 
@@ -28,22 +28,23 @@ const programs = [
 ]
 
 const faqs = [
-  ['Як зрозуміти, який у мене рівень?', 'Почнемо з короткого безкоштовного знайомства й визначення рівня. Після нього порадимо формат, групу та план, що відповідають саме вашій меті.'],
+  ['Як зрозуміти, який у мене рівень?', 'Почнемо з короткого безкоштовного тестування й визначення рівня. Після нього порадимо формат, групу та план, що відповідають саме вашій меті.'],
   ['Чи можна навчатися онлайн?', 'Так. Можна навчатися онлайн з будь-якого міста або офлайн у центрі Чернівців — на вул. О. Кобилянської, 30.'],
-  ['Який формат обрати: групу чи індивідуально?', 'Група дає більше живої взаємодії та мотивації. Індивідуальний формат підійде, якщо потрібен гнучкий графік або дуже конкретна ціль. Допоможемо обрати після знайомства.'],
+  ['Який формат обрати: групу чи індивідуально?', 'Група дає більше живої взаємодії та мотивації. Індивідуальний формат підійде, якщо потрібен гнучкий графік або дуже конкретна ціль. Допоможемо обрати після тестування.'],
   ['Чи є заняття для дітей?', 'Так, формуємо дитячі й підліткові групи, а також проводимо індивідуальні заняття та підготовку до НМТ.'],
-  ['Що буде на першій зустрічі?', 'Познайомимось, поговоримо про вашу ціль, визначимо поточний рівень і покажемо, як виглядатиме навчальний маршрут. Без тиску та зобов’язань.'],
+  ['Що буде на тестуванні?', 'Познайомимось, поговоримо про вашу ціль, визначимо поточний рівень і покажемо, як виглядатиме навчальний маршрут. Без тиску та зобов’язань.'],
 ]
 
 function Logo({ inverse = false }: { inverse?: boolean }) {
   return (
-    <a href="#top" className="group inline-flex items-center gap-3" aria-label="Americana — на головну" data-testid="logo-link">
-      <span className={`grid h-11 w-11 place-items-center rounded-[14px] ${inverse ? 'bg-white' : 'bg-ink'} shadow-sm`}>
-        <span className={`text-xl font-black tracking-[-0.1em] ${inverse ? 'text-ink' : 'text-white'}`}>A<span className="text-red">.</span></span>
-      </span>
-      <span className={`text-lg font-black uppercase tracking-[0.1em] ${inverse ? 'text-white' : 'text-ink'}`}>Americana</span>
+    <a href="#top" className={`inline-flex items-center ${inverse ? 'rounded-2xl bg-white px-3 py-2' : ''}`} aria-label="Americana — на головну" data-testid="logo-link">
+      <img src="/assets/americana-logo.png" alt="Americana" className="h-14 w-auto max-w-[220px] object-contain md:h-16" width="249" height="96" />
     </a>
   )
+}
+
+function TikTokIcon({ size = 20 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.1 3c.5 2.8 2.1 4.5 4.9 4.7v3.1c-1.9.1-3.6-.5-4.9-1.5v6.1a6.4 6.4 0 1 1-5.5-6.3v3.2a3.2 3.2 0 1 0 2.3 3.1V3h3.2Z" fill="currentColor" /></svg>
 }
 
 function Header() {
@@ -62,7 +63,7 @@ function Header() {
         </nav>
         <div className="hidden items-center gap-3 md:flex">
           <a href="tel:+380663781316" className="inline-flex items-center gap-2 text-sm font-extrabold text-ink" data-testid="header-phone"><Phone size={17} /> +38 (066) 378 13 16</a>
-          <a href="#contact" className="btn-primary min-h-11 px-5 text-sm" data-testid="header-cta">Спробувати безкоштовно</a>
+          <a href="#contact" className="btn-primary min-h-11 px-5 text-sm" data-testid="header-cta">Записатись на тестування</a>
         </div>
         <button className="grid h-12 w-12 place-items-center rounded-full bg-sky lg:hidden" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label={open ? 'Закрити меню' : 'Відкрити меню'} data-testid="mobile-menu-button">
           {open ? <X /> : <Menu />}
@@ -73,7 +74,7 @@ function Header() {
           <nav className="mx-auto flex max-w-[1240px] flex-col gap-1" aria-label="Мобільна навігація">
             {nav.map(([label, href]) => <a key={href} href={href} onClick={() => setOpen(false)} className="rounded-2xl px-4 py-3 text-lg font-extrabold hover:bg-sky">{label}</a>)}
             <a href="tel:+380663781316" className="mt-3 flex min-h-12 items-center gap-3 px-4 font-bold"><Phone size={19} /> +38 (066) 378 13 16</a>
-            <a href="#contact" onClick={() => setOpen(false)} className="btn-primary mt-3">Безкоштовне знайомство</a>
+            <a href="#contact" onClick={() => setOpen(false)} className="btn-primary mt-3">Записатись на тестування</a>
           </nav>
         </div>
       )}
@@ -119,11 +120,11 @@ function Hero() {
           <h1 className="display-title">Англійська, з якою ти <span className="relative inline-block text-blue">говориш<svg className="absolute -bottom-2 left-0 w-full text-red" viewBox="0 0 220 14" fill="none" aria-hidden="true"><path d="M3 10C54 2 151 2 217 8" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg></span> — не перекладаєш.</h1>
           <p className="mt-7 max-w-xl text-lg font-medium leading-relaxed text-ink/65 md:text-xl">Навчаємо живої англійської без страху помилок. Зрозумілий маршрут, сучасні матеріали й викладач, із яким хочеться говорити.</p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="#contact" className="btn-primary" data-testid="hero-cta">Визначити свій рівень <ArrowRight size={19} /></a>
+            <a href="#contact" className="btn-primary" data-testid="hero-cta">Записатись на тестування <ArrowRight size={19} /></a>
             <a href="#formats" className="btn-secondary" data-testid="hero-formats">Обрати формат</a>
           </div>
           <div className="mt-9 flex flex-wrap gap-x-7 gap-y-3 text-sm font-bold text-ink/60">
-            <span className="flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-sky text-blue"><Check size={14} strokeWidth={3} /></span> Перше знайомство — 0 грн</span>
+            <span className="flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-sky text-blue"><Check size={14} strokeWidth={3} /></span> Тестування — 0 грн</span>
             <span className="flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-sky text-blue"><Check size={14} strokeWidth={3} /></span> Online & offline</span>
           </div>
         </div>
@@ -184,7 +185,7 @@ function Formats() {
               <ul className="mt-7 space-y-3">
                 {features.map(feature => <li key={feature} className="flex items-center gap-3 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-sky text-blue"><Check size={14} strokeWidth={3} /></span>{feature}</li>)}
               </ul>
-              <a href="#contact" className="mt-auto inline-flex items-center gap-2 pt-8 font-extrabold text-blue transition group-hover:gap-4" data-testid={`program-${title.toLowerCase().replaceAll(' ', '-')}`}>Дізнатися більше <ArrowRight size={18} /></a>
+              <a href="#contact" className="mt-auto inline-flex items-center gap-2 pt-8 font-extrabold text-blue transition group-hover:gap-4" data-testid={`program-${title.toLowerCase().replaceAll(' ', '-')}`}>Записатись на тестування <ArrowRight size={18} /></a>
             </article>
           ))}
         </div>
@@ -216,14 +217,14 @@ function Method() {
 function Journey() {
   const steps = [
     ['01', 'Залишаєш заявку', 'Ім’я та номер — цього достатньо.'],
-    ['02', 'Знайомимось', 'Визначаємо рівень і твою мету.'],
+    ['02', 'Проходимо тестування', 'Визначаємо рівень і твою мету.'],
     ['03', 'Підбираємо формат', 'Група, викладач і зручний графік.'],
     ['04', 'Починаєш говорити', 'Без “ще трохи підготуюсь”. Одразу.'],
   ]
   return (
     <section className="bg-ink py-24 text-white md:py-32">
       <div className="container-page">
-        <div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr]"><div><span className="eyebrow bg-white/10 text-white">Твій старт</span><h2 className="text-4xl font-extrabold leading-tight tracking-[-.045em] md:text-5xl">Від заявки до першого “I can!” — чотири кроки</h2><a href="#contact" className="btn-primary mt-8">Зробити перший крок <ArrowRight size={19} /></a></div><div className="space-y-3">{steps.map(([n, title, text]) => <div key={n} className="grid grid-cols-[55px_1fr] gap-4 rounded-3xl border border-white/10 bg-white/[.05] p-5 md:grid-cols-[70px_1fr_auto] md:items-center md:p-6"><span className="text-sm font-black text-red">{n}</span><div><h3 className="text-lg font-extrabold">{title}</h3><p className="mt-1 text-sm text-white/55">{text}</p></div><Check className="hidden text-blue md:block" /></div>)}</div></div>
+        <div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr]"><div><span className="eyebrow bg-white/10 text-white">Твій старт</span><h2 className="text-4xl font-extrabold leading-tight tracking-[-.045em] md:text-5xl">Від заявки до першого “I can!” — чотири кроки</h2><a href="#contact" className="btn-primary mt-8">Записатись на тестування <ArrowRight size={19} /></a></div><div className="space-y-3">{steps.map(([n, title, text]) => <div key={n} className="grid grid-cols-[55px_1fr] gap-4 rounded-3xl border border-white/10 bg-white/[.05] p-5 md:grid-cols-[70px_1fr_auto] md:items-center md:p-6"><span className="text-sm font-black text-red">{n}</span><div><h3 className="text-lg font-extrabold">{title}</h3><p className="mt-1 text-sm text-white/55">{text}</p></div><Check className="hidden text-blue md:block" /></div>)}</div></div>
       </div>
     </section>
   )
@@ -257,43 +258,70 @@ function FAQ() {
   )
 }
 
-type FormState = { name: string; phone: string; goal: string; format: string }
+type FormState = {
+  studentType: 'adult' | 'child'
+  fullName: string
+  childName: string
+  childAge: string
+  contactPerson: string
+  phone: string
+  goal: string
+  format: string
+  website: string
+}
+
+const emptyForm: FormState = {
+  studentType: 'adult', fullName: '', childName: '', childAge: '', contactPerson: '',
+  phone: '', goal: '', format: 'Не знаю — порадьте', website: '',
+}
 
 function Contact() {
   const formId = useId()
-  const [form, setForm] = useState<FormState>({ name: '', phone: '', goal: '', format: 'Не знаю — порадьте' })
+  const [form, setForm] = useState<FormState>(emptyForm)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const update = (key: keyof FormState, value: string) => setForm(old => ({ ...old, [key]: value }))
+  const setStudentType = (studentType: FormState['studentType']) => {
+    setError('')
+    setStatus('')
+    setForm(old => ({ ...old, studentType, format: studentType === 'child' ? 'Заняття для дитини' : 'Не знаю — порадьте' }))
+  }
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setStatus('')
-    if (form.name.trim().length < 2) return setError('Будь ласка, вкажіть ім’я.')
+    if (form.studentType === 'adult' && form.fullName.trim().length < 3) return setError('Будь ласка, вкажіть ім’я та прізвище.')
+    if (form.studentType === 'child' && form.childName.trim().length < 3) return setError('Будь ласка, вкажіть ім’я та прізвище дитини.')
+    const age = Number(form.childAge)
+    if (form.studentType === 'child' && (!Number.isInteger(age) || age < 1 || age > 17)) return setError('Будь ласка, вкажіть коректний вік дитини.')
+    if (form.studentType === 'child' && form.contactPerson.trim().length < 2) return setError('Вкажіть, з ким із батьків або опікунів зв’язатися.')
     if (form.phone.replace(/\D/g, '').length < 10) return setError('Перевірте, будь ласка, номер телефону.')
-    const endpoint = import.meta.env.VITE_LEAD_ENDPOINT
-    if (endpoint) {
-      try {
-        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-        if (!response.ok) throw new Error('Request failed')
-        setStatus('Дякуємо! Заявку отримано — скоро зв’яжемося з вами.')
-        setForm({ name: '', phone: '', goal: '', format: 'Не знаю — порадьте' })
-      } catch { setError('Не вдалося надіслати форму. Зателефонуйте нам або спробуйте ще раз.') }
-      return
+    setSubmitting(true)
+    try {
+      const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const payload = await response.json().catch(() => ({ message: '' })) as { message?: string }
+      if (!response.ok) throw new Error(payload.message || 'Не вдалося надіслати заявку.')
+      setStatus(payload.message || 'Заявку надіслано. Скоро ми зв’яжемося з вами.')
+      setForm({ ...emptyForm, studentType: form.studentType, format: form.studentType === 'child' ? 'Заняття для дитини' : 'Не знаю — порадьте' })
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Не вдалося надіслати форму. Спробуйте ще раз або зателефонуйте нам.')
+    } finally {
+      setSubmitting(false)
     }
-    const subject = encodeURIComponent(`Заявка з сайту Americana — ${form.name}`)
-    const body = encodeURIComponent(`Ім’я: ${form.name}\nТелефон: ${form.phone}\nФормат: ${form.format}\nМета: ${form.goal || 'не вказано'}`)
-    setStatus('Відкриваємо поштовий застосунок — залишиться натиснути «Надіслати».')
-    window.location.href = `mailto:amerchernivtsi@gmail.com?subject=${subject}&body=${body}`
   }
   return (
     <section id="contact" className="bg-red py-20 md:py-28">
       <div className="container-page grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
-        <div className="text-white"><span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em]">Безкоштовне знайомство</span><h2 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-[-.045em] md:text-6xl">Твоя англійська може початися сьогодні.</h2><p className="mt-6 max-w-lg text-lg leading-relaxed text-white/75">Залиш контакт — познайомимося, визначимо рівень і запропонуємо наступний крок. Без тиску й довгих анкет.</p><div className="mt-8 flex flex-wrap gap-5 text-sm font-bold"><span className="flex items-center gap-2"><Clock3 size={18} /> 15–20 хвилин</span><span className="flex items-center gap-2"><Check size={18} /> 0 грн</span></div></div>
+        <div className="text-white"><span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em]">Безкоштовне тестування</span><h2 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-[-.045em] md:text-6xl">Твоя англійська може початися сьогодні.</h2><p className="mt-6 max-w-lg text-lg leading-relaxed text-white/75">Залиш контакт — визначимо рівень і запропонуємо наступний крок. Для дітей підберемо програму відповідно до віку та цілі.</p><div className="mt-8 flex flex-wrap gap-5 text-sm font-bold"><span className="flex items-center gap-2"><Clock3 size={18} /> 15–20 хвилин</span><span className="flex items-center gap-2"><Check size={18} /> 0 грн</span></div></div>
         <form onSubmit={submit} className="rounded-[2.25rem] bg-white p-6 shadow-soft md:p-9" noValidate data-testid="lead-form">
-          <div className="grid gap-5 sm:grid-cols-2"><label className="block" htmlFor={`${formId}-name`}><span className="mb-2 block text-sm font-extrabold">Як до вас звертатися?</span><input id={`${formId}-name`} value={form.name} onChange={e => update('name', e.target.value)} placeholder="Ваше ім’я" autoComplete="name" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-name" /></label><label className="block" htmlFor={`${formId}-phone`}><span className="mb-2 block text-sm font-extrabold">Номер телефону</span><input id={`${formId}-phone`} type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+38 (___) ___ __ __" autoComplete="tel" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-phone" /></label></div>
+          <fieldset><legend className="mb-3 text-sm font-extrabold">Для кого тестування?</legend><div className="grid grid-cols-2 gap-2 rounded-2xl bg-sky p-1.5"><button type="button" onClick={() => setStudentType('adult')} aria-pressed={form.studentType === 'adult'} className={`min-h-12 rounded-xl px-3 text-sm font-extrabold transition ${form.studentType === 'adult' ? 'bg-white text-blue shadow-sm' : 'text-ink/55 hover:text-ink'}`} data-testid="student-adult">Для дорослого</button><button type="button" onClick={() => setStudentType('child')} aria-pressed={form.studentType === 'child'} className={`min-h-12 rounded-xl px-3 text-sm font-extrabold transition ${form.studentType === 'child' ? 'bg-white text-blue shadow-sm' : 'text-ink/55 hover:text-ink'}`} data-testid="student-child">Для дитини</button></div></fieldset>
+          {form.studentType === 'adult' ? <label className="mt-5 block" htmlFor={`${formId}-full-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище</span><input id={`${formId}-full-name`} value={form.fullName} onChange={e => update('fullName', e.target.value)} placeholder="Наприклад: Анна Коваль" autoComplete="name" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-name" /></label> : <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_120px]"><label className="block" htmlFor={`${formId}-child-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище дитини</span><input id={`${formId}-child-name`} value={form.childName} onChange={e => update('childName', e.target.value)} placeholder="Наприклад: Марко Коваль" autoComplete="off" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-name" /></label><label className="block" htmlFor={`${formId}-child-age`}><span className="mb-2 block text-sm font-extrabold">Вік</span><input id={`${formId}-child-age`} type="number" min="1" max="17" inputMode="numeric" value={form.childAge} onChange={e => update('childAge', e.target.value)} placeholder="10" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-age" /></label></div>}
+          {form.studentType === 'child' && <label className="mt-5 block" htmlFor={`${formId}-contact-person`}><span className="mb-2 block text-sm font-extrabold">З ким зв’язатися?</span><input id={`${formId}-contact-person`} value={form.contactPerson} onChange={e => update('contactPerson', e.target.value)} placeholder="Наприклад: мама Олена" autoComplete="name" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-contact-person" /></label>}
+          <label className="mt-5 block" htmlFor={`${formId}-phone`}><span className="mb-2 block text-sm font-extrabold">{form.studentType === 'child' ? 'Контактний номер батьків' : 'Номер телефону'}</span><input id={`${formId}-phone`} type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+38 (___) ___ __ __" autoComplete="tel" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-phone" /></label>
           <label className="mt-5 block" htmlFor={`${formId}-format`}><span className="mb-2 block text-sm font-extrabold">Який формат цікавить?</span><select id={`${formId}-format`} value={form.format} onChange={e => update('format', e.target.value)} className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-format"><option>Не знаю — порадьте</option><option>Групові заняття</option><option>Індивідуальні заняття</option><option>Підготовка до НМТ</option><option>Заняття для дитини</option></select></label>
           <label className="mt-5 block" htmlFor={`${formId}-goal`}><span className="mb-2 block text-sm font-extrabold">Що хочете змінити у своїй англійській? <span className="font-medium text-ink/40">(необов’язково)</span></span><textarea id={`${formId}-goal`} value={form.goal} onChange={e => update('goal', e.target.value)} placeholder="Наприклад: хочу впевнено говорити у подорожах" rows={3} className="w-full resize-none rounded-2xl border border-ink/15 bg-paper p-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-goal" /></label>
+          <label className="absolute -left-[9999px]" aria-hidden="true" htmlFor={`${formId}-website`}>Ваш сайт<input id={`${formId}-website`} tabIndex={-1} autoComplete="off" value={form.website} onChange={e => update('website', e.target.value)} /></label>
           {error && <p role="alert" className="mt-4 rounded-xl bg-red/10 px-4 py-3 text-sm font-bold text-red" data-testid="form-error">{error}</p>}{status && <p role="status" className="mt-4 rounded-xl bg-sky px-4 py-3 text-sm font-bold text-blue" data-testid="form-status">{status}</p>}
-          <button type="submit" className="btn-primary mt-6 w-full" data-testid="lead-submit">Записатися на знайомство <Send size={18} /></button><p className="mt-4 text-center text-xs leading-relaxed text-ink/40">Надсилаючи форму, ви погоджуєтесь на обробку даних для зв’язку з вами.</p>
+          <button type="submit" disabled={submitting} className="btn-primary mt-6 w-full disabled:cursor-wait disabled:opacity-60" data-testid="lead-submit">{submitting ? 'Надсилаємо…' : 'Записатись на тестування'} <Send size={18} /></button><p className="mt-4 text-center text-xs leading-relaxed text-ink/40">Надсилаючи форму, ви погоджуєтесь на обробку даних для зв’язку з вами.</p>
         </form>
       </div>
     </section>
@@ -303,7 +331,7 @@ function Contact() {
 function Footer() {
   return (
     <footer className="bg-[#061d43] py-14 text-white">
-        <div className="container-page"><div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4"><div><Logo inverse /><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/55">Міжнародний мовний центр у Чернівцях. Англійська для життя, навчання та нових можливостей.</p></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Навігація</h3><div className="mt-5 flex flex-col gap-3">{nav.map(([label, href]) => <a key={href} href={href} className="text-sm font-bold text-white/75 hover:text-white">{label}</a>)}</div></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Контакти</h3><div className="mt-5 space-y-4 text-sm font-bold text-white/75"><a href="tel:+380663781316" className="flex items-center gap-3 hover:text-white"><Phone size={18} /> +38 (066) 378 13 16</a><a href="mailto:amerchernivtsi@gmail.com" className="flex items-center gap-3 hover:text-white"><Send size={18} /> amerchernivtsi@gmail.com</a><a href="https://maps.google.com/?q=вул.+Ольги+Кобилянської+30,+Чернівці" target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-white"><MapPin size={18} className="mt-0.5 shrink-0" /> вул. О. Кобилянської, 30<br />Чернівці, Україна</a></div></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Будьмо на зв’язку</h3><a href="https://www.facebook.com/americanaenglish/" target="_blank" rel="noreferrer" className="mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:bg-red" aria-label="Facebook" data-testid="facebook-link"><Facebook size={20} /></a></div></div><div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-7 text-xs font-semibold text-white/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Americana English. Усі права захищено.</p><a href="https://americanaenglish.com/public-agreement" target="_blank" rel="noreferrer" className="hover:text-white">Публічний договір</a></div></div>
+        <div className="container-page"><div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4"><div><Logo inverse /><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/55">Міжнародний мовний центр у Чернівцях. Англійська для життя, навчання та нових можливостей.</p></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Навігація</h3><div className="mt-5 flex flex-col gap-3">{nav.map(([label, href]) => <a key={href} href={href} className="text-sm font-bold text-white/75 hover:text-white">{label}</a>)}</div></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Контакти</h3><div className="mt-5 space-y-4 text-sm font-bold text-white/75"><a href="tel:+380663781316" className="flex items-center gap-3 hover:text-white"><Phone size={18} /> +38 (066) 378 13 16</a><a href="mailto:amerchernivtsi@gmail.com" className="flex items-center gap-3 hover:text-white"><Send size={18} /> amerchernivtsi@gmail.com</a><a href="https://maps.google.com/?q=вул.+Ольги+Кобилянської+30,+Чернівці" target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-white"><MapPin size={18} className="mt-0.5 shrink-0" /> вул. О. Кобилянської, 30<br />Чернівці, Україна</a></div></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Будьмо на зв’язку</h3><div className="mt-5 flex gap-2"><a href="https://www.instagram.com/americana_cv" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="Instagram" data-testid="instagram-link"><Instagram size={20} /></a><a href="https://www.tiktok.com/@americana_cv" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="TikTok" data-testid="tiktok-link"><TikTokIcon /></a><a href="https://www.facebook.com/americanaenglish/" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="Facebook" data-testid="facebook-link"><Facebook size={20} /></a></div></div></div><div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-7 text-xs font-semibold text-white/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Americana English. Усі права захищено.</p><a href="https://americanaenglish.com/public-agreement" target="_blank" rel="noreferrer" className="hover:text-white">Публічний договір</a></div></div>
     </footer>
   )
 }
