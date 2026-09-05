@@ -25,6 +25,15 @@ test('shows the child-specific testing fields', async ({ page }) => {
   await expect(page.getByText('Контактний номер батьків')).toBeVisible()
 })
 
+test('shows schedules and all main price options', async ({ page }) => {
+  await page.goto('/#schedule')
+  await expect(page.getByTestId('children-schedule')).toContainText('17:30–19:00')
+  await expect(page.getByTestId('adult-schedule')).toContainText('19:30–21:00')
+  await expect(page.getByTestId('adult-prices')).toContainText('14 000 грн')
+  await expect(page.getByTestId('children-prices')).toContainText('10 440 грн')
+  await expect(page.getByTestId('individual-prices')).toContainText('650 грн')
+})
+
 test('opens FAQ answers', async ({ page }) => {
   await page.goto('/#faq')
   await page.getByTestId('faq-1').click()

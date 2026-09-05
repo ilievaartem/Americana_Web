@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 
 const nav = [
-  ['Формати', '#formats'], ['Як навчаємо', '#method'], ['Про нас', '#about'], ['FAQ', '#faq'],
+  ['Формати', '#formats'], ['Розклад', '#schedule'], ['Ціни', '#prices'], ['Як навчаємо', '#method'], ['Про нас', '#about'], ['FAQ', '#faq'],
 ]
 
 const programs = [
@@ -58,19 +58,19 @@ function Header() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-ink/5 bg-paper/90 backdrop-blur-xl">
       <div className="container-page flex h-[76px] items-center justify-between">
         <Logo />
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="Головна навігація">
+        <nav className="hidden items-center gap-5 xl:flex" aria-label="Головна навігація">
           {nav.map(([label, href]) => <a key={href} href={href} className="text-sm font-bold text-ink/70 transition hover:text-blue">{label}</a>)}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
           <a href="tel:+380663781316" className="inline-flex items-center gap-2 text-sm font-extrabold text-ink" data-testid="header-phone"><Phone size={17} /> +38 (066) 378 13 16</a>
           <a href="#contact" className="btn-primary min-h-11 px-5 text-sm" data-testid="header-cta">Записатись на тестування</a>
         </div>
-        <button className="grid h-12 w-12 place-items-center rounded-full bg-sky lg:hidden" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label={open ? 'Закрити меню' : 'Відкрити меню'} data-testid="mobile-menu-button">
+        <button className="grid h-12 w-12 place-items-center rounded-full bg-sky xl:hidden" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label={open ? 'Закрити меню' : 'Відкрити меню'} data-testid="mobile-menu-button">
           {open ? <X /> : <Menu />}
         </button>
       </div>
       {open && (
-        <div className="border-t border-ink/10 bg-white px-5 py-6 lg:hidden" data-testid="mobile-menu">
+        <div className="border-t border-ink/10 bg-white px-5 py-6 xl:hidden" data-testid="mobile-menu">
           <nav className="mx-auto flex max-w-[1240px] flex-col gap-1" aria-label="Мобільна навігація">
             {nav.map(([label, href]) => <a key={href} href={href} onClick={() => setOpen(false)} className="rounded-2xl px-4 py-3 text-lg font-extrabold hover:bg-sky">{label}</a>)}
             <a href="tel:+380663781316" className="mt-3 flex min-h-12 items-center gap-3 px-4 font-bold"><Phone size={19} /> +38 (066) 378 13 16</a>
@@ -189,6 +189,63 @@ function Formats() {
             </article>
           ))}
         </div>
+      </div>
+    </section>
+  )
+}
+
+type ScheduleItem = { time: string; group: string; mode?: 'Очно' | 'Онлайн'; note?: string }
+
+function ScheduleList({ title, days, items, dark = false }: { title: string; days: string; items: ScheduleItem[]; dark?: boolean }) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-current/10 pb-4">
+        <h3 className="text-xl font-extrabold tracking-[-.03em]">{title}</h3>
+        <span className={`text-sm font-extrabold ${dark ? 'text-white/55' : 'text-blue'}`}>{days}</span>
+      </div>
+      <div className="divide-y divide-current/10">
+        {items.map(({ time, group, mode, note }) => <div key={`${days}-${time}-${group}`} className="grid grid-cols-[88px_1fr_auto] items-center gap-3 py-4"><span className="font-black tabular-nums">{time}</span><div><p className="font-extrabold">{group}</p>{note && <p className={`mt-1 text-xs font-semibold ${dark ? 'text-white/50' : 'text-ink/45'}`}>{note}</p>}</div>{mode && <span className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider ${mode === 'Онлайн' ? 'bg-red text-white' : dark ? 'bg-white/10 text-white' : 'bg-sky text-blue'}`}>{mode}</span>}</div>)}
+      </div>
+    </div>
+  )
+}
+
+function Schedule() {
+  const childrenWeekA: ScheduleItem[] = [
+    { time: '15:00–16:00', group: 'Діти', mode: 'Очно' },
+    { time: '16:00–17:00', group: 'Підлітки', mode: 'Очно' },
+    { time: '17:00–18:00', group: 'Підлітки', mode: 'Онлайн' },
+    { time: '17:30–19:00', group: 'Підлітки C1', mode: 'Онлайн', note: 'Понеділок, середа та п’ятниця' },
+  ]
+  const childrenWeekB: ScheduleItem[] = [
+    { time: '15:00–16:00', group: 'Діти', mode: 'Очно' },
+    { time: '16:00–17:00', group: 'Підлітки', mode: 'Очно' },
+    { time: '17:00–18:00', group: 'Підлітки', mode: 'Онлайн' },
+  ]
+  return (
+    <section id="schedule" className="py-24 md:py-32">
+      <div className="container-page">
+        <div className="grid gap-8 lg:grid-cols-[1fr_.65fr] lg:items-end"><div><span className="eyebrow">Актуальний розклад</span><h2 className="section-title">Обирай час, який<br /><span className="text-blue">працює для тебе</span></h2></div><p className="text-base font-medium leading-relaxed text-ink/60">Усі години вказані за київським часом. Остаточну групу підбираємо після тестування відповідно до рівня.</p></div>
+        <div className="mt-14 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
+          <article className="card p-7 md:p-9" data-testid="children-schedule"><div className="mb-8 flex items-center gap-4"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue text-white"><Users /></span><div><span className="text-xs font-extrabold uppercase tracking-[.14em] text-blue">Діти й підлітки</span><h3 className="mt-1 text-2xl font-extrabold">Групові заняття</h3></div></div><div className="grid gap-9 md:grid-cols-2"><ScheduleList title="Перша група днів" days="Пн · Ср" items={childrenWeekA} /><ScheduleList title="Друга група днів" days="Вт · Чт" items={childrenWeekB} /></div></article>
+          <article className="rounded-[2rem] bg-ink p-7 text-white shadow-soft md:p-9" data-testid="adult-schedule"><div className="mb-8 flex items-center gap-4"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-red text-white"><Clock3 /></span><div><span className="text-xs font-extrabold uppercase tracking-[.14em] text-white/50">Дорослі</span><h3 className="mt-1 text-2xl font-extrabold">Групові заняття</h3></div></div><div className="space-y-8"><ScheduleList dark title="Три рази на тиждень" days="Пн · Ср · Пт" items={[{ time: '11:00–12:30', group: 'Денна група' }, { time: '17:30–19:00', group: 'Вечірня група' }, { time: '19:30–21:00', group: 'Вечірня група' }]} /><ScheduleList dark title="Два рази на тиждень" days="Вт · Чт" items={[{ time: '18:00–20:00', group: 'Вечірня група' }]} /></div></article>
+        </div>
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-3xl bg-sky px-6 py-5 sm:flex-row sm:items-center"><p className="font-bold text-ink/65">Не впевнені, яка група підходить за рівнем?</p><a href="#contact" className="inline-flex items-center gap-2 font-extrabold text-blue">Записатись на тестування <ArrowRight size={18} /></a></div>
+      </div>
+    </section>
+  )
+}
+
+function Prices() {
+  return (
+    <section id="prices" className="bg-sky/60 py-24 md:py-32">
+      <div className="container-page">
+        <div className="mx-auto max-w-3xl text-center"><span className="eyebrow bg-white">Вартість навчання</span><h2 className="section-title">Зрозумілі ціни.<br /><span className="text-red">Вигідніше за курс.</span></h2><p className="mt-6 text-lg font-medium text-ink/60">Обирайте комфортний спосіб оплати — щомісяця або одразу за повний навчальний період.</p></div>
+        <div className="mt-14 grid gap-5 lg:grid-cols-2">
+          <article className="relative overflow-hidden rounded-[2.25rem] bg-ink p-7 text-white shadow-soft md:p-10" data-testid="adult-prices"><div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue" /><div className="relative"><span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em]">Курс для дорослих</span><div className="mt-8 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-.05em]">3 900</strong><span className="mb-1 font-bold text-white/60">грн / місяць</span></div><p className="mt-3 text-sm font-semibold text-white/55">11 занять · одне заняття — 355 грн</p><div className="mt-8 rounded-3xl bg-white/10 p-6"><p className="text-sm font-bold text-white/60">Повний курс · 44 заняття · близько 4 місяців</p><div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-lg font-bold text-white/40 line-through">15 600 грн</span><strong className="text-3xl font-black text-white">14 000 грн</strong></div><p className="mt-3 text-sm font-extrabold text-[#8fb6ff]">Економія 1 600 грн при оплаті одразу</p></div><div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 px-5 py-4"><Star size={18} className="fill-red text-red" /><p className="text-sm font-bold">Для студентів, які вже навчалися: <span className="text-white">3 700 грн / місяць</span></p></div><a href="#contact" className="btn-primary mt-7 w-full">Записатись на тестування <ArrowRight size={18} /></a></div></article>
+          <article className="rounded-[2.25rem] border border-ink/10 bg-white p-7 shadow-card md:p-10" data-testid="children-prices"><span className="rounded-full bg-sky px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em] text-blue">Дитячий курс</span><div className="mt-8 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-.05em] text-ink">2 900</strong><span className="mb-1 font-bold text-ink/50">грн / місяць</span></div><div className="mt-8 rounded-3xl bg-sky p-6"><p className="text-sm font-bold text-ink/55">Семестр · вересень — січень</p><div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-lg font-bold text-ink/35 line-through">11 600 грн</span><strong className="text-3xl font-black text-blue">10 440 грн</strong></div><p className="mt-3 text-sm font-extrabold text-blue">Знижка 10% при оплаті семестру одразу</p></div><div className="mt-5 flex items-start gap-3 rounded-2xl border border-ink/10 px-5 py-4"><Star size={18} className="mt-0.5 shrink-0 fill-red text-red" /><p className="text-sm font-bold text-ink/65">Знижка 5% для УБД. Знижки не сумуються.</p></div><a href="#contact" className="btn-primary mt-7 w-full">Записатись на тестування <ArrowRight size={18} /></a></article>
+        </div>
+        <div className="mt-5 rounded-[2.25rem] border border-ink/10 bg-white p-7 md:p-10" data-testid="individual-prices"><div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><span className="text-xs font-extrabold uppercase tracking-[.14em] text-blue">Індивідуально або в парі</span><h3 className="mt-2 text-3xl font-extrabold tracking-[-.04em]">Максимум уваги викладача</h3></div><a href="#contact" className="inline-flex items-center gap-2 font-extrabold text-blue">Записатись на тестування <ArrowRight size={18} /></a></div><div className="mt-8 grid gap-4 md:grid-cols-2"><div className="rounded-3xl bg-sky p-6"><p className="font-extrabold text-blue">Для дітей</p><div className="mt-4 flex flex-wrap gap-x-8 gap-y-3"><p><strong className="text-2xl font-black">550 грн</strong><span className="block text-xs font-semibold text-ink/50">індивідуально / година</span></p><p><strong className="text-2xl font-black">400 грн</strong><span className="block text-xs font-semibold text-ink/50">у парі / з людини</span></p></div></div><div className="rounded-3xl bg-[#fff0f0] p-6"><p className="font-extrabold text-red">Для дорослих</p><div className="mt-4 flex flex-wrap gap-x-8 gap-y-3"><p><strong className="text-2xl font-black">650 грн</strong><span className="block text-xs font-semibold text-ink/50">індивідуально / година</span></p><p><strong className="text-2xl font-black">500 грн</strong><span className="block text-xs font-semibold text-ink/50">у парі / з людини</span></p></div></div></div></div>
       </div>
     </section>
   )
@@ -337,5 +394,5 @@ function Footer() {
 }
 
 export default function App() {
-  return <><Header /><Hero /><TrustStrip /><Intro /><Formats /><Method /><Journey /><Credentials /><FAQ /><Contact /><Footer /><a href="tel:+380663781316" className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-blue text-white shadow-lg shadow-blue/30 transition hover:-translate-y-1 md:hidden" aria-label="Зателефонувати" data-testid="floating-call"><Phone size={22} /></a></>
+  return <><Header /><Hero /><TrustStrip /><Intro /><Formats /><Schedule /><Prices /><Method /><Journey /><Credentials /><FAQ /><Contact /><Footer /><a href="tel:+380663781316" className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-blue text-white shadow-lg shadow-blue/30 transition hover:-translate-y-1 md:hidden" aria-label="Зателефонувати" data-testid="floating-call"><Phone size={22} /></a></>
 }
