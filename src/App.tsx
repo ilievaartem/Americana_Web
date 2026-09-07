@@ -194,42 +194,116 @@ function Formats() {
   )
 }
 
-type ScheduleItem = { time: string; group: string; mode?: 'Очно' | 'Онлайн'; note?: string }
+type ScheduleItem = { time: string; group: string; mode?: 'Офлайн' | 'Онлайн'; note?: string }
 
-function ScheduleList({ title, days, items, dark = false }: { title: string; days: string; items: ScheduleItem[]; dark?: boolean }) {
+function ScheduleDay({ title, items }: { title: string; items: ScheduleItem[] }) {
   return (
-    <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-current/10 pb-4">
-        <h3 className="text-xl font-extrabold tracking-[-.03em]">{title}</h3>
-        <span className={`text-sm font-extrabold ${dark ? 'text-white/55' : 'text-blue'}`}>{days}</span>
+    <article className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-sm sm:p-7 md:p-9">
+      <h3 className="text-xl font-extrabold tracking-[-.03em] sm:text-2xl">{title}</h3>
+      <div className="mt-6 space-y-3">
+        {items.map(({ time, group, mode, note }, index) => (
+          <div
+            key={`${title}-${time}-${group}`}
+            className={`grid gap-3 rounded-2xl border-l-4 bg-sky/55 px-4 py-4 sm:grid-cols-[minmax(145px,1fr)_145px_auto] sm:items-center sm:px-5 ${index % 2 === 0 ? 'border-blue' : 'border-red'}`}
+          >
+            <div>
+              <p className="font-extrabold text-ink">{group}</p>
+              {note && <p className="mt-1 text-xs font-semibold leading-relaxed text-ink/50">{note}</p>}
+            </div>
+            <span className="font-bold tabular-nums text-ink/70">{time}</span>
+            {mode && (
+              <span className={`w-fit rounded-xl px-3 py-2 text-xs font-extrabold uppercase tracking-wider ${mode === 'Онлайн' ? 'bg-red text-white' : 'bg-blue/10 text-blue'}`}>
+                {mode}
+              </span>
+            )}
+          </div>
+        ))}
       </div>
-      <div className="divide-y divide-current/10">
-        {items.map(({ time, group, mode, note }) => <div key={`${days}-${time}-${group}`} className="grid grid-cols-[88px_1fr_auto] items-center gap-3 py-4"><span className="font-black tabular-nums">{time}</span><div><p className="font-extrabold">{group}</p>{note && <p className={`mt-1 text-xs font-semibold ${dark ? 'text-white/50' : 'text-ink/45'}`}>{note}</p>}</div>{mode && <span className={`rounded-full px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wider ${mode === 'Онлайн' ? 'bg-red text-white' : dark ? 'bg-white/10 text-white' : 'bg-sky text-blue'}`}>{mode}</span>}</div>)}
-      </div>
-    </div>
+    </article>
   )
 }
 
 function Schedule() {
+  const [audience, setAudience] = useState<'children' | 'adults'>('children')
   const childrenWeekA: ScheduleItem[] = [
-    { time: '15:00–16:00', group: 'Діти', mode: 'Очно' },
-    { time: '16:00–17:00', group: 'Підлітки', mode: 'Очно' },
+    { time: '15:00–16:00', group: 'Діти', mode: 'Офлайн' },
+    { time: '16:00–17:00', group: 'Підлітки', mode: 'Офлайн' },
     { time: '17:00–18:00', group: 'Підлітки', mode: 'Онлайн' },
-    { time: '17:30–19:00', group: 'Підлітки C1', mode: 'Онлайн', note: 'Понеділок, середа та п’ятниця' },
+    { time: '17:30–19:00', group: 'Підлітки C1', mode: 'Онлайн', note: 'Понеділок / Середа / П’ятниця' },
   ]
   const childrenWeekB: ScheduleItem[] = [
-    { time: '15:00–16:00', group: 'Діти', mode: 'Очно' },
-    { time: '16:00–17:00', group: 'Підлітки', mode: 'Очно' },
+    { time: '15:00–16:00', group: 'Діти', mode: 'Офлайн' },
+    { time: '16:00–17:00', group: 'Підлітки', mode: 'Офлайн' },
     { time: '17:00–18:00', group: 'Підлітки', mode: 'Онлайн' },
   ]
+  const adultWeekA: ScheduleItem[] = [
+    { time: '11:00–12:30', group: 'Група відповідного рівня' },
+    { time: '17:30–19:00', group: 'Група відповідного рівня' },
+    { time: '19:30–21:00', group: 'Група відповідного рівня' },
+  ]
+  const adultWeekB: ScheduleItem[] = [
+    { time: '18:00–20:00', group: 'Група відповідного рівня' },
+  ]
+
   return (
     <section id="schedule" className="py-24 md:py-32">
       <div className="container-page">
-        <div className="grid gap-8 lg:grid-cols-[1fr_.65fr] lg:items-end"><div><span className="eyebrow">Актуальний розклад</span><h2 className="section-title">Обирай час, який<br /><span className="text-blue">працює для тебе</span></h2></div><p className="text-base font-medium leading-relaxed text-ink/60">Усі години вказані за київським часом. Остаточну групу підбираємо після тестування відповідно до рівня.</p></div>
-        <div className="mt-14 grid gap-5 lg:grid-cols-[1.25fr_.75fr]">
-          <article className="card p-7 md:p-9" data-testid="children-schedule"><div className="mb-8 flex items-center gap-4"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue text-white"><Users /></span><div><span className="text-xs font-extrabold uppercase tracking-[.14em] text-blue">Діти й підлітки</span><h3 className="mt-1 text-2xl font-extrabold">Групові заняття</h3></div></div><div className="grid gap-9 md:grid-cols-2"><ScheduleList title="Перша група днів" days="Пн · Ср" items={childrenWeekA} /><ScheduleList title="Друга група днів" days="Вт · Чт" items={childrenWeekB} /></div></article>
-          <article className="rounded-[2rem] bg-ink p-7 text-white shadow-soft md:p-9" data-testid="adult-schedule"><div className="mb-8 flex items-center gap-4"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-red text-white"><Clock3 /></span><div><span className="text-xs font-extrabold uppercase tracking-[.14em] text-white/50">Дорослі</span><h3 className="mt-1 text-2xl font-extrabold">Групові заняття</h3></div></div><div className="space-y-8"><ScheduleList dark title="Три рази на тиждень" days="Пн · Ср · Пт" items={[{ time: '11:00–12:30', group: 'Денна група' }, { time: '17:30–19:00', group: 'Вечірня група' }, { time: '19:30–21:00', group: 'Вечірня група' }]} /><ScheduleList dark title="Два рази на тиждень" days="Вт · Чт" items={[{ time: '18:00–20:00', group: 'Вечірня група' }]} /></div></article>
+        <div className="grid gap-8 lg:grid-cols-[1fr_.65fr] lg:items-end">
+          <div><span className="eyebrow">Актуальний розклад</span><h2 className="section-title">Обирай час, який<br /><span className="text-blue">працює для тебе</span></h2></div>
+          <p className="text-base font-medium leading-relaxed text-ink/60">Усі години вказані за київським часом. Остаточну групу підбираємо після тестування відповідно до рівня.</p>
         </div>
+
+        <div className="mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-2 rounded-2xl bg-sky p-2" role="tablist" aria-label="Розклад за віком">
+          <button
+            type="button"
+            role="tab"
+            id="children-schedule-tab"
+            aria-controls="children-schedule-panel"
+            aria-selected={audience === 'children'}
+            onClick={() => setAudience('children')}
+            className={`min-h-14 rounded-xl px-3 py-3 text-sm font-extrabold transition sm:text-base ${audience === 'children' ? 'bg-blue text-white shadow-md' : 'text-blue hover:bg-white/70'}`}
+            data-testid="schedule-children-tab"
+          >
+            Діти і підлітки
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="adult-schedule-tab"
+            aria-controls="adult-schedule-panel"
+            aria-selected={audience === 'adults'}
+            onClick={() => setAudience('adults')}
+            className={`min-h-14 rounded-xl px-3 py-3 text-sm font-extrabold transition sm:text-base ${audience === 'adults' ? 'bg-red text-white shadow-md' : 'text-blue hover:bg-white/70'}`}
+            data-testid="schedule-adult-tab"
+          >
+            Дорослі
+          </button>
+        </div>
+
+        {audience === 'children' ? (
+          <div id="children-schedule-panel" role="tabpanel" aria-labelledby="children-schedule-tab" className="mt-7" data-testid="children-schedule">
+            <div className="mb-6 flex items-center gap-4 rounded-2xl bg-sky/70 px-5 py-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue text-white"><Users /></span>
+              <div><h3 className="text-xl font-extrabold">Розклад для дітей і підлітків</h3><p className="mt-1 text-sm font-semibold text-ink/50">Офлайн у Чернівцях або онлайн</p></div>
+            </div>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <ScheduleDay title="Понеділок / Середа" items={childrenWeekA} />
+              <ScheduleDay title="Вівторок / Четвер" items={childrenWeekB} />
+            </div>
+          </div>
+        ) : (
+          <div id="adult-schedule-panel" role="tabpanel" aria-labelledby="adult-schedule-tab" className="mt-7" data-testid="adult-schedule">
+            <div className="mb-6 flex items-center gap-4 rounded-2xl bg-sky/70 px-5 py-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red text-white"><Clock3 /></span>
+              <div><h3 className="text-xl font-extrabold">Розклад для дорослих</h3><p className="mt-1 text-sm font-semibold text-ink/50">Рівень кожної групи визначаємо після тестування</p></div>
+            </div>
+            <div className="space-y-5">
+              <ScheduleDay title="Понеділок / Середа / П’ятниця" items={adultWeekA} />
+              <ScheduleDay title="Вівторок / Четвер" items={adultWeekB} />
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-3xl bg-sky px-6 py-5 sm:flex-row sm:items-center"><p className="font-bold text-ink/65">Не впевнені, яка група підходить за рівнем?</p><a href="#contact" className="inline-flex items-center gap-2 font-extrabold text-blue">Записатись на тестування <ArrowRight size={18} /></a></div>
       </div>
     </section>
