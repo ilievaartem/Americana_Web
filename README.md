@@ -38,6 +38,26 @@ docker compose up --build
 
 Пароль не потрапляє у frontend або Git. Для автоматичних тестів використовується mock-транспорт — реальні листи не надсилаються.
 
+## Деплой на Netlify
+
+У репозиторії є `netlify.toml`, тому Netlify автоматично збирає сайт із `dist` і серверну функцію з `netlify/functions`. Функція доступна на `POST /api/leads`, тобто React використовує ту саму адресу локально та в production.
+
+У **Project configuration → Environment variables** задайте:
+
+```ini
+EMAIL_TRANSPORT=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-address@gmail.com
+SMTP_PASS=your-16-character-google-app-password
+SMTP_FROM=Americana Website <your-address@gmail.com>
+LEAD_RECIPIENT=recipient@gmail.com
+SECRETS_SCAN_OMIT_KEYS=SMTP_HOST,EMAIL_TRANSPORT,LEAD_RECIPIENT,SMTP_USER,SMTP_FROM
+```
+
+Позначайте як секрет лише `SMTP_PASS`. Для Gmail також можна використати порт `587` разом із `SMTP_SECURE=false`. Після зміни змінних запустіть новий deploy.
+
 ## Перевірки
 
 ```bash
