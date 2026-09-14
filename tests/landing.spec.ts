@@ -52,3 +52,12 @@ test('mobile navigation is accessible', async ({ page }, testInfo) => {
   await expect(page.getByTestId('mobile-menu')).toBeVisible()
   await expect(page.getByTestId('mobile-menu-button')).toHaveAttribute('aria-expanded', 'true')
 })
+
+test('opens the public agreement from the footer', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('public-agreement-link').click()
+  await expect(page).toHaveURL(/\/public-agreement$/)
+  await expect(page.getByTestId('agreement-title')).toHaveText('Публічний договір')
+  await expect(page.getByTestId('agreement-document')).toContainText('ТОВ «АМЕРИКАНА»')
+  await expect(page.getByTestId('agreement-document')).toContainText('ЄДРПОУ 39374295')
+})
