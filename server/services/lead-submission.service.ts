@@ -1,17 +1,36 @@
 import { sendLeadEmail } from './email.service.js'
 import { validateLead } from './lead-validation.service.js'
+import { verifyTurnstile } from './turnstile.service.js'
 
 export type LeadSubmissionResult = {
   status: 201 | 400 | 502 | 503
   message: string
 }
 
-export async function submitLead(input: unknown): Promise<LeadSubmissionResult> {
+function looksAutomated(input: unknown) {
+  if (!input || typeof input !== 'object') return false
+  const body = input as Record<string, unknown>
+  if (typeof body.website === 'string' && body.website.trim()) return true
+  if (typeof body.company === 'string' && body.company.trim()) return true
+
+  const startedAt = Number(body.startedAt)
+  const elapsed = Date.now() - startedAt
+  return !Number.isFinite(startedAt) || elapsed < 2_000 || elapsed > 24 * 60 * 60 * 1_000
+}
+
+export async function submitLead(input: unknown, options: { clientIp?: string } = {}): Promise<LeadSubmissionResult> {
+  // Return a believable success to bots without sending an email.
+  if (looksAutomated(input)) {
+    console.info('Lead ignored by anti-spam checks')
+    return { status: 201, message: 'Заявку прийнято.' }
+  }
+
   const result = validateLead(input)
   if (!result.data) return { status: 400, message: result.error || 'Некоректні дані форми.' }
 
-  // Honeypot: bots receive a normal response, but no email is sent.
-  if (result.data.website) return { status: 201, message: 'Заявку прийнято.' }
+  const humanCheck = await verifyTurnstile(result.data.turnstileToken, options.clientIp)
+  if (humanCheck === 'unavailable') return { status: 503, message: 'Перевірка захисту тимчасово недоступна. Спробуйте ще раз.' }
+  if (humanCheck === 'rejected') return { status: 400, message: 'Не вдалося підтвердити, що форму заповнила людина. Оновіть сторінку й спробуйте ще раз.' }
 
   try {
     await sendLeadEmail(result.data)

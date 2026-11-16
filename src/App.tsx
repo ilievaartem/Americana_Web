@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useId, useState } from 'react'
+import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import {
   ArrowRight, BookOpen, Check, ChevronDown, Clock3,
   Facebook, GraduationCap, Instagram, Languages, MapPin, Menu, MessageCircle,
@@ -39,13 +39,102 @@ const faqs = [
 function Logo({ inverse = false }: { inverse?: boolean }) {
   return (
     <a href="#top" className={`inline-flex items-center ${inverse ? 'rounded-2xl bg-white px-3 py-2' : ''}`} aria-label="Americana — на головну" data-testid="logo-link">
-      <img src="/assets/americana-logo.png" alt="Americana" className="h-14 w-auto max-w-[220px] object-contain md:h-16" width="249" height="96" />
+      <img src="/assets/americana-logo.png" alt="Логотип мовного центру Americana English" className="h-14 w-auto max-w-[220px] object-contain md:h-16" width="249" height="96" />
     </a>
   )
 }
 
 function TikTokIcon({ size = 20 }: { size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.1 3c.5 2.8 2.1 4.5 4.9 4.7v3.1c-1.9.1-3.6-.5-4.9-1.5v6.1a6.4 6.4 0 1 1-5.5-6.3v3.2a3.2 3.2 0 1 0 2.3 3.1V3h3.2Z" fill="currentColor" /></svg>
+}
+
+type LeadAudience = 'adult' | 'child'
+
+function chooseTestingAudience(audience: LeadAudience) {
+  window.dispatchEvent(new CustomEvent<LeadAudience>('americana:select-audience', { detail: audience }))
+}
+
+type TurnstileApi = {
+  render: (container: HTMLElement, options: {
+    sitekey: string
+    action: string
+    theme: 'light'
+    size: 'flexible'
+    appearance: 'interaction-only'
+    callback: (token: string) => void
+    'error-callback': () => void
+    'expired-callback': () => void
+  }) => string
+  remove: (widgetId: string) => void
+}
+
+declare global {
+  interface Window { turnstile?: TurnstileApi }
+}
+
+let turnstileLoader: Promise<void> | null = null
+
+function loadTurnstile() {
+  if (window.turnstile) return Promise.resolve()
+  if (turnstileLoader) return turnstileLoader
+
+  turnstileLoader = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>('#cloudflare-turnstile-script')
+    const onLoad = () => resolve()
+    const onError = () => reject(new Error('TURNSTILE_LOAD_FAILED'))
+    if (existing) {
+      existing.addEventListener('load', onLoad, { once: true })
+      existing.addEventListener('error', onError, { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.id = 'cloudflare-turnstile-script'
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+    script.async = true
+    script.defer = true
+    script.addEventListener('load', onLoad, { once: true })
+    script.addEventListener('error', onError, { once: true })
+    document.head.appendChild(script)
+  })
+
+  return turnstileLoader
+}
+
+const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim()
+
+function TurnstileWidget({ onToken, resetKey }: { onToken: (token: string) => void; resetKey: number }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const callbackRef = useRef(onToken)
+  callbackRef.current = onToken
+
+  useEffect(() => {
+    if (!turnstileSiteKey || !containerRef.current) return
+    let active = true
+    let widgetId = ''
+
+    void loadTurnstile().then(() => {
+      if (!active || !containerRef.current || !window.turnstile) return
+      widgetId = window.turnstile.render(containerRef.current, {
+        sitekey: turnstileSiteKey,
+        action: 'lead_form',
+        theme: 'light',
+        size: 'flexible',
+        appearance: 'interaction-only',
+        callback: token => callbackRef.current(token),
+        'error-callback': () => callbackRef.current(''),
+        'expired-callback': () => callbackRef.current(''),
+      })
+    }).catch(() => callbackRef.current(''))
+
+    return () => {
+      active = false
+      if (widgetId && window.turnstile) window.turnstile.remove(widgetId)
+    }
+  }, [resetKey])
+
+  if (!turnstileSiteKey) return null
+  return <div className="mt-5 min-h-[65px]" ref={containerRef} data-testid="turnstile-widget" />
 }
 
 function Header() {
@@ -66,12 +155,12 @@ function Header() {
           <a href="tel:+380663781316" className="inline-flex items-center gap-2 text-sm font-extrabold text-ink" data-testid="header-phone"><Phone size={17} /> +38 (066) 378 13 16</a>
           <a href="#contact" className="btn-primary min-h-11 px-5 text-sm" data-testid="header-cta">Записатись на тестування</a>
         </div>
-        <button className="grid h-12 w-12 place-items-center rounded-full bg-sky xl:hidden" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-label={open ? 'Закрити меню' : 'Відкрити меню'} data-testid="mobile-menu-button">
+        <button className="grid h-12 w-12 place-items-center rounded-full bg-sky xl:hidden" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-controls="mobile-navigation" aria-label={open ? 'Закрити меню' : 'Відкрити меню'} data-testid="mobile-menu-button">
           {open ? <X /> : <Menu />}
         </button>
       </div>
       {open && (
-        <div className="border-t border-ink/10 bg-white px-5 py-6 xl:hidden" data-testid="mobile-menu">
+        <div id="mobile-navigation" className="border-t border-ink/10 bg-white px-5 py-6 xl:hidden" data-testid="mobile-menu">
           <nav className="mx-auto flex max-w-[1240px] flex-col gap-1" aria-label="Мобільна навігація">
             {nav.map(([label, href]) => <a key={href} href={href} onClick={() => setOpen(false)} className="rounded-2xl px-4 py-3 text-lg font-extrabold hover:bg-sky">{label}</a>)}
             <a href="tel:+380663781316" className="mt-3 flex min-h-12 items-center gap-3 px-4 font-bold"><Phone size={19} /> +38 (066) 378 13 16</a>
@@ -85,7 +174,7 @@ function Header() {
 
 function HeroVisual() {
   return (
-    <div className="relative mx-auto h-[470px] w-full max-w-[520px] lg:h-[570px]" aria-label="Візуалізація процесу навчання">
+    <div className="relative mx-auto h-[470px] w-full max-w-[520px] lg:h-[570px]" role="img" aria-label="Навчальний маршрут: розмовна практика та прогрес учня 78 відсотків">
       <div className="absolute inset-x-6 bottom-5 top-10 rotate-2 overflow-hidden rounded-[2.75rem] bg-ink shadow-soft sm:inset-x-10">
         <div className="absolute -right-16 -top-10 h-64 w-64 rounded-full bg-blue blur-[1px]" />
         <div className="absolute -bottom-20 -left-12 h-64 w-64 rounded-full bg-red" />
@@ -113,12 +202,12 @@ function HeroVisual() {
 
 function Hero() {
   return (
-    <main id="top" className="relative overflow-hidden bg-paper pt-[76px]">
+    <section id="top" className="relative overflow-hidden bg-paper pt-[76px]" aria-labelledby="hero-title">
       <div className="absolute -left-48 top-32 h-96 w-96 rounded-full bg-sky blur-3xl" />
       <div className="container-page relative grid min-h-[760px] items-center gap-8 py-14 lg:grid-cols-[1.08fr_.92fr] lg:py-20">
         <div className="max-w-2xl">
           <div className="eyebrow"><span className="h-2 w-2 rounded-full bg-red" /> Англійська у Чернівцях та онлайн</div>
-          <h1 className="display-title">Англійська, з якою ти <span className="relative inline-block text-blue">говориш<svg className="absolute -bottom-2 left-0 w-full text-red" viewBox="0 0 220 14" fill="none" aria-hidden="true"><path d="M3 10C54 2 151 2 217 8" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg></span> — не перекладаєш.</h1>
+          <h1 id="hero-title" className="display-title">Англійська, з якою ти <span className="relative inline-block text-blue">говориш<svg className="absolute -bottom-2 left-0 w-full text-red" viewBox="0 0 220 14" fill="none" aria-hidden="true"><path d="M3 10C54 2 151 2 217 8" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/></svg></span> — не перекладаєш.</h1>
           <p className="mt-7 max-w-xl text-lg font-medium leading-relaxed text-ink/65 md:text-xl">Навчаємо живої англійської без страху помилок. Зрозумілий маршрут, сучасні матеріали й викладач, із яким хочеться говорити.</p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <a href="#contact" className="btn-primary" data-testid="hero-cta">Записатись на тестування <ArrowRight size={19} /></a>
@@ -131,7 +220,7 @@ function Hero() {
         </div>
         <HeroVisual />
       </div>
-    </main>
+    </section>
   )
 }
 
@@ -139,8 +228,12 @@ function TrustStrip() {
   const items = ['CELTA', 'DELTA', 'TKT', 'CAE', 'Жива англійська', 'Online & Offline']
   return (
     <section className="overflow-hidden border-y border-ink/10 bg-white py-5" aria-label="Кваліфікації та переваги">
-      <div className="marquee-track flex items-center">
-        {[...items, ...items].map((item, i) => <div key={`${item}-${i}`} className="flex items-center"><span className="px-8 text-sm font-black uppercase tracking-[0.12em] text-ink/65 md:px-12">{item}</span><Star size={16} className="fill-red text-red" /></div>)}
+      <div className="marquee-track" data-testid="trust-marquee">
+        {[0, 1, 2, 3].map(copy => (
+          <div key={copy} className="marquee-group" aria-hidden={copy > 0} data-testid="trust-marquee-group">
+            {items.map(item => <div key={`${copy}-${item}`} className="flex items-center"><span className="px-8 text-sm font-black uppercase tracking-[0.12em] text-ink/65 md:px-12">{item}</span><Star size={16} className="fill-red text-red" /></div>)}
+          </div>
+        ))}
       </div>
     </section>
   )
@@ -178,9 +271,10 @@ function Formats() {
           <p className="max-w-md text-base font-medium leading-relaxed text-ink/60">Не знаєте, що підійде? Це нормально — визначимо рівень і порадимо формат після короткої розмови.</p>
         </div>
         <div className="mt-14 grid gap-5 lg:grid-cols-3">
-          {programs.map(({ icon: Icon, accent, tag, title, text, features }) => (
-            <article key={title} className="group flex min-h-[480px] flex-col rounded-[2.25rem] border border-ink/10 bg-white p-7 transition duration-300 hover:-translate-y-2 hover:shadow-soft md:p-8">
-              <div className="flex items-start justify-between gap-4"><span className={`grid h-14 w-14 place-items-center rounded-2xl ${accent}`}><Icon /></span><span className="rounded-full bg-sky px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-blue">{tag}</span></div>
+          {programs.map(({ icon: Icon, accent, tag, title, text, features }, index) => (
+            <article key={title} className={`group relative flex min-h-[480px] flex-col rounded-[2.25rem] bg-white p-7 transition duration-300 hover:-translate-y-2 hover:shadow-soft md:p-8 ${index === 0 ? 'border-2 border-blue shadow-soft' : 'border border-ink/10'}`} data-testid={index === 0 ? 'popular-program' : undefined}>
+              {index === 0 && <span className="absolute -top-4 left-8 rounded-full bg-blue px-4 py-2 text-[11px] font-extrabold uppercase tracking-wider text-white shadow-lg shadow-blue/20">Найчастіше обирають</span>}
+              <div className="flex items-start justify-between gap-4"><span className={`grid h-14 w-14 place-items-center rounded-2xl ${accent}`}><Icon /></span><span className={`rounded-full px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider ${index === 0 ? 'bg-blue text-white' : 'bg-sky text-blue'}`}>{tag}</span></div>
               <h3 className="mt-8 text-2xl font-extrabold tracking-[-0.035em]">{title}</h3>
               <p className="mt-4 leading-relaxed text-ink/60">{text}</p>
               <ul className="mt-7 space-y-3">
@@ -197,15 +291,19 @@ function Formats() {
 
 type ScheduleItem = { time: string; group: string; mode?: 'Офлайн' | 'Онлайн'; note?: string }
 
-function ScheduleDay({ title, items }: { title: string; items: ScheduleItem[] }) {
+function ScheduleDay({ title, items, audience }: { title: string; items: ScheduleItem[]; audience: LeadAudience }) {
   return (
     <article className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-sm sm:p-7 md:p-9">
       <h3 className="text-xl font-extrabold tracking-[-.03em] sm:text-2xl">{title}</h3>
       <div className="mt-6 space-y-3">
         {items.map(({ time, group, mode, note }, index) => (
-          <div
+          <a
             key={`${title}-${time}-${group}`}
-            className={`grid gap-3 rounded-2xl border-l-4 bg-sky/55 px-4 py-4 sm:grid-cols-[minmax(145px,1fr)_145px_auto] sm:items-center sm:px-5 ${index % 2 === 0 ? 'border-blue' : 'border-red'}`}
+            href="#contact"
+            onClick={() => chooseTestingAudience(audience)}
+            aria-label={`Записатися: ${group}, ${time}, ${title}`}
+            className={`group/slot relative grid gap-3 rounded-2xl border-l-4 bg-sky/55 px-4 py-4 transition duration-200 hover:-translate-y-0.5 hover:bg-sky hover:shadow-card focus:outline-none sm:grid-cols-[minmax(145px,1fr)_130px_118px] sm:items-center sm:px-5 ${index % 2 === 0 ? 'border-blue' : 'border-red'}`}
+            data-testid={`schedule-slot-${audience}`}
           >
             <div>
               <p className="font-extrabold text-ink">{group}</p>
@@ -213,11 +311,12 @@ function ScheduleDay({ title, items }: { title: string; items: ScheduleItem[] })
             </div>
             <span className="font-bold tabular-nums text-ink/70">{time}</span>
             {mode && (
-              <span className={`w-fit rounded-xl px-3 py-2 text-xs font-extrabold uppercase tracking-wider ${mode === 'Онлайн' ? 'bg-red text-white' : 'bg-blue/10 text-blue'}`}>
+              <span className={`w-fit rounded-xl px-3 py-2 text-xs font-extrabold uppercase tracking-wider transition-opacity duration-200 sm:group-hover/slot:opacity-0 sm:group-focus-visible/slot:opacity-0 ${mode === 'Онлайн' ? 'bg-blue text-white' : 'bg-blue/10 text-blue'}`}>
                 {mode}
               </span>
             )}
-          </div>
+            <span aria-hidden="true" className="inline-flex items-center gap-1 text-xs font-extrabold text-blue transition duration-200 sm:absolute sm:right-5 sm:top-1/2 sm:-translate-y-1/2 sm:translate-x-2 sm:opacity-0 sm:group-hover/slot:translate-x-0 sm:group-hover/slot:opacity-100 sm:group-focus-visible/slot:translate-x-0 sm:group-focus-visible/slot:opacity-100">Записатися <ArrowRight size={15} /></span>
+          </a>
         ))}
       </div>
     </article>
@@ -226,6 +325,17 @@ function ScheduleDay({ title, items }: { title: string; items: ScheduleItem[] })
 
 function Schedule() {
   const [audience, setAudience] = useState<'children' | 'adults'>('children')
+  const moveAudienceTab = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const nextAudience = event.key === 'Home'
+      ? 'children'
+      : event.key === 'End'
+        ? 'adults'
+        : audience === 'children' ? 'adults' : 'children'
+    setAudience(nextAudience)
+    requestAnimationFrame(() => document.getElementById(`${nextAudience === 'children' ? 'children' : 'adult'}-schedule-tab`)?.focus())
+  }
   const childrenWeekA: ScheduleItem[] = [
     { time: '15:00–16:00', group: 'Діти', mode: 'Офлайн' },
     { time: '16:00–17:00', group: 'Підлітки', mode: 'Офлайн' },
@@ -254,15 +364,18 @@ function Schedule() {
           <p className="text-base font-medium leading-relaxed text-ink/60">Усі години вказані за київським часом. Остаточну групу підбираємо після тестування відповідно до рівня.</p>
         </div>
 
-        <div className="mx-auto mt-12 grid max-w-2xl grid-cols-2 gap-2 rounded-2xl bg-sky p-2" role="tablist" aria-label="Розклад за віком">
+        <div className="relative mx-auto mt-12 grid max-w-2xl grid-cols-2 rounded-2xl bg-sky p-2" role="tablist" aria-label="Розклад за віком">
+          <span className={`pointer-events-none absolute bottom-2 top-2 w-[calc(50%_-_0.5rem)] rounded-xl shadow-md transition-[transform,background-color] duration-500 ease-[cubic-bezier(.2,.8,.2,1)] ${audience === 'adults' ? 'translate-x-[calc(100%_+_0.5rem)] bg-red' : 'translate-x-0 bg-blue'}`} data-testid="schedule-tab-indicator" />
           <button
             type="button"
             role="tab"
             id="children-schedule-tab"
             aria-controls="children-schedule-panel"
             aria-selected={audience === 'children'}
+            tabIndex={audience === 'children' ? 0 : -1}
             onClick={() => setAudience('children')}
-            className={`min-h-14 rounded-xl px-3 py-3 text-sm font-extrabold transition sm:text-base ${audience === 'children' ? 'bg-blue text-white shadow-md' : 'text-blue hover:bg-white/70'}`}
+            onKeyDown={moveAudienceTab}
+            className={`relative z-10 min-h-14 rounded-xl px-3 py-3 text-sm font-extrabold transition-colors duration-300 sm:text-base ${audience === 'children' ? 'text-white' : 'text-blue hover:text-ink'}`}
             data-testid="schedule-children-tab"
           >
             Діти і підлітки
@@ -273,8 +386,10 @@ function Schedule() {
             id="adult-schedule-tab"
             aria-controls="adult-schedule-panel"
             aria-selected={audience === 'adults'}
+            tabIndex={audience === 'adults' ? 0 : -1}
             onClick={() => setAudience('adults')}
-            className={`min-h-14 rounded-xl px-3 py-3 text-sm font-extrabold transition sm:text-base ${audience === 'adults' ? 'bg-red text-white shadow-md' : 'text-blue hover:bg-white/70'}`}
+            onKeyDown={moveAudienceTab}
+            className={`relative z-10 min-h-14 rounded-xl px-3 py-3 text-sm font-extrabold transition-colors duration-300 sm:text-base ${audience === 'adults' ? 'text-white' : 'text-blue hover:text-ink'}`}
             data-testid="schedule-adult-tab"
           >
             Дорослі
@@ -282,25 +397,25 @@ function Schedule() {
         </div>
 
         {audience === 'children' ? (
-          <div id="children-schedule-panel" role="tabpanel" aria-labelledby="children-schedule-tab" className="mt-7" data-testid="children-schedule">
+          <div id="children-schedule-panel" role="tabpanel" aria-labelledby="children-schedule-tab" className="schedule-panel-enter mt-7" data-testid="children-schedule">
             <div className="mb-6 flex items-center gap-4 rounded-2xl bg-sky/70 px-5 py-4">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue text-white"><Users /></span>
               <div><h3 className="text-xl font-extrabold">Розклад для дітей і підлітків</h3><p className="mt-1 text-sm font-semibold text-ink/50">Офлайн у Чернівцях або онлайн</p></div>
             </div>
             <div className="grid gap-5 lg:grid-cols-2">
-              <ScheduleDay title="Понеділок / Середа" items={childrenWeekA} />
-              <ScheduleDay title="Вівторок / Четвер" items={childrenWeekB} />
+              <ScheduleDay title="Понеділок / Середа" items={childrenWeekA} audience="child" />
+              <ScheduleDay title="Вівторок / Четвер" items={childrenWeekB} audience="child" />
             </div>
           </div>
         ) : (
-          <div id="adult-schedule-panel" role="tabpanel" aria-labelledby="adult-schedule-tab" className="mt-7" data-testid="adult-schedule">
+          <div id="adult-schedule-panel" role="tabpanel" aria-labelledby="adult-schedule-tab" className="schedule-panel-enter mt-7" data-testid="adult-schedule">
             <div className="mb-6 flex items-center gap-4 rounded-2xl bg-sky/70 px-5 py-4">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red text-white"><Clock3 /></span>
               <div><h3 className="text-xl font-extrabold">Розклад для дорослих</h3><p className="mt-1 text-sm font-semibold text-ink/50">Рівень кожної групи визначаємо після тестування</p></div>
             </div>
             <div className="space-y-5">
-              <ScheduleDay title="Понеділок / Середа / П’ятниця" items={adultWeekA} />
-              <ScheduleDay title="Вівторок / Четвер" items={adultWeekB} />
+              <ScheduleDay title="Понеділок / Середа / П’ятниця" items={adultWeekA} audience="adult" />
+              <ScheduleDay title="Вівторок / Четвер" items={adultWeekB} audience="adult" />
             </div>
           </div>
         )}
@@ -317,8 +432,28 @@ function Prices() {
       <div className="container-page">
         <div className="mx-auto max-w-3xl text-center"><span className="eyebrow bg-white">Вартість навчання</span><h2 className="section-title">Зрозумілі ціни.<br /><span className="text-red">Вигідніше за курс.</span></h2><p className="mt-6 text-lg font-medium text-ink/60">Обирайте комфортний спосіб оплати — щомісяця або одразу за повний навчальний період.</p></div>
         <div className="mt-14 grid gap-5 lg:grid-cols-2">
-          <article className="relative overflow-hidden rounded-[2.25rem] bg-ink p-7 text-white shadow-soft md:p-10" data-testid="adult-prices"><div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue" /><div className="relative"><span className="rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em]">Курс для дорослих</span><div className="mt-8 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-.05em]">3 900</strong><span className="mb-1 font-bold text-white/60">грн / місяць</span></div><p className="mt-3 text-sm font-semibold text-white/55">11 занять · одне заняття — 355 грн</p><div className="mt-8 rounded-3xl bg-white/10 p-6"><p className="text-sm font-bold text-white/60">Повний курс · 44 заняття · близько 4 місяців</p><div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-lg font-bold text-white/40 line-through">15 600 грн</span><strong className="text-3xl font-black text-white">14 000 грн</strong></div><p className="mt-3 text-sm font-extrabold text-[#8fb6ff]">Економія 1 600 грн при оплаті одразу</p></div><div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 px-5 py-4"><Star size={18} className="fill-red text-red" /><p className="text-sm font-bold">Для студентів, які вже навчалися: <span className="text-white">3 700 грн / місяць</span></p></div><a href="#contact" className="btn-primary mt-7 w-full">Записатись на тестування <ArrowRight size={18} /></a></div></article>
-          <article className="rounded-[2.25rem] border border-ink/10 bg-white p-7 shadow-card md:p-10" data-testid="children-prices"><span className="rounded-full bg-sky px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em] text-blue">Дитячий курс</span><div className="mt-8 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-.05em] text-ink">2 900</strong><span className="mb-1 font-bold text-ink/50">грн / місяць</span></div><div className="mt-8 rounded-3xl bg-sky p-6"><p className="text-sm font-bold text-ink/55">Семестр · вересень — січень</p><div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-lg font-bold text-ink/35 line-through">11 600 грн</span><strong className="text-3xl font-black text-blue">10 440 грн</strong></div><p className="mt-3 text-sm font-extrabold text-blue">Знижка 10% при оплаті семестру одразу</p></div><div className="mt-5 flex items-start gap-3 rounded-2xl border border-ink/10 px-5 py-4"><Star size={18} className="mt-0.5 shrink-0 fill-red text-red" /><p className="text-sm font-bold text-ink/65">Знижка 5% для УБД. Знижки не сумуються.</p></div><a href="#contact" className="btn-primary mt-7 w-full">Записатись на тестування <ArrowRight size={18} /></a></article>
+          <article className="relative flex flex-col overflow-hidden rounded-[2.25rem] bg-ink p-7 text-white shadow-soft md:p-10" data-testid="adult-prices">
+            <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue" aria-hidden="true" />
+            <div className="relative flex h-full flex-col">
+              <div className="lg:min-h-[164px]">
+                <span className="w-fit rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em]">Курс для дорослих</span>
+                <div className="mt-8 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-.05em]">3 900</strong><span className="mb-1 font-bold text-white/70">грн / місяць</span></div>
+                <p className="mt-3 text-sm font-semibold text-white/70">11 занять · одне заняття — 355 грн</p>
+              </div>
+              <div className="rounded-3xl bg-white/10 p-6 lg:min-h-[186px]" data-testid="adult-price-offer"><p className="text-sm font-bold text-white/75">Повний курс · 44 заняття · близько 4 місяців</p><div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-lg font-bold text-white/55 line-through">15 600 грн</span><strong className="text-3xl font-black text-white">14 000 грн</strong></div><p className="mt-3 text-sm font-extrabold text-[#a9c8ff]">Економія 1 600 грн при оплаті одразу</p></div>
+              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/15 px-5 py-4 lg:min-h-[68px]" data-testid="adult-price-note"><Star size={18} className="shrink-0 fill-red text-red" aria-hidden="true" /><p className="text-sm font-bold">Для студентів, які вже навчалися: <span className="text-white">3 700 грн / місяць</span></p></div>
+              <div className="mt-auto pt-7"><a href="#contact" className="btn-primary w-full" aria-label="Записатись на тестування для дорослих">Записатись на тестування <ArrowRight size={18} aria-hidden="true" /></a></div>
+            </div>
+          </article>
+          <article className="flex flex-col rounded-[2.25rem] border border-ink/10 bg-white p-7 shadow-card md:p-10" data-testid="children-prices">
+            <div className="lg:min-h-[164px]">
+              <span className="w-fit rounded-full bg-sky px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em] text-blue">Дитячий курс</span>
+              <div className="mt-8 flex items-end gap-2"><strong className="text-5xl font-black tracking-[-.05em] text-ink">2 900</strong><span className="mb-1 font-bold text-ink/55">грн / місяць</span></div>
+            </div>
+            <div className="rounded-3xl bg-sky p-6 lg:min-h-[186px]" data-testid="child-price-offer"><p className="text-sm font-bold text-ink/65">Семестр · вересень — січень</p><div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-lg font-bold text-ink/45 line-through">11 600 грн</span><strong className="text-3xl font-black text-blue">10 440 грн</strong></div><p className="mt-3 text-sm font-extrabold text-blue">Знижка 10% при оплаті семестру одразу</p></div>
+            <div className="mt-5 flex items-start gap-3 rounded-2xl border border-ink/10 px-5 py-4 lg:min-h-[68px]" data-testid="child-price-note"><Star size={18} className="mt-0.5 shrink-0 fill-red text-red" aria-hidden="true" /><p className="text-sm font-bold text-ink/70">Знижка 5% для УБД. Знижки не сумуються.</p></div>
+            <div className="mt-auto pt-7"><a href="#contact" className="btn-primary w-full" aria-label="Записатись на тестування для дитини">Записатись на тестування <ArrowRight size={18} aria-hidden="true" /></a></div>
+          </article>
         </div>
         <div className="mt-5 rounded-[2.25rem] border border-ink/10 bg-white p-7 md:p-10" data-testid="individual-prices"><div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><span className="text-xs font-extrabold uppercase tracking-[.14em] text-blue">Індивідуально або в парі</span><h3 className="mt-2 text-3xl font-extrabold tracking-[-.04em]">Максимум уваги викладача</h3></div><a href="#contact" className="inline-flex items-center gap-2 font-extrabold text-blue">Записатись на тестування <ArrowRight size={18} /></a></div><div className="mt-8 grid gap-4 md:grid-cols-2"><div className="rounded-3xl bg-sky p-6"><p className="font-extrabold text-blue">Для дітей</p><div className="mt-4 flex flex-wrap gap-x-8 gap-y-3"><p><strong className="text-2xl font-black">550 грн</strong><span className="block text-xs font-semibold text-ink/50">індивідуально / година</span></p><p><strong className="text-2xl font-black">400 грн</strong><span className="block text-xs font-semibold text-ink/50">у парі / з людини</span></p></div></div><div className="rounded-3xl bg-[#fff0f0] p-6"><p className="font-extrabold text-red">Для дорослих</p><div className="mt-4 flex flex-wrap gap-x-8 gap-y-3"><p><strong className="text-2xl font-black">650 грн</strong><span className="block text-xs font-semibold text-ink/50">індивідуально / година</span></p><p><strong className="text-2xl font-black">500 грн</strong><span className="block text-xs font-semibold text-ink/50">у парі / з людини</span></p></div></div></div></div>
       </div>
@@ -334,10 +469,10 @@ function Method() {
         <div className="mt-14 grid gap-5 lg:grid-cols-12">
           <article className="relative overflow-hidden rounded-[2.25rem] bg-ink p-8 text-white lg:col-span-7 lg:min-h-[400px] md:p-10">
             <span className="text-xs font-extrabold uppercase tracking-[.16em] text-white/50">01 · Діагностика</span><h3 className="mt-6 max-w-lg text-3xl font-extrabold leading-tight tracking-[-.04em] md:text-4xl">Починаємо не з підручника, а з тебе.</h3><p className="mt-5 max-w-md leading-relaxed text-white/65">Дізнаємося рівень, ціль, інтереси й комфортний темп. На цій основі складаємо маршрут навчання.</p>
-            <div className="mt-10 flex flex-wrap gap-3"><span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold">твій рівень</span><span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold">твоя ціль</span><span className="rounded-full bg-red px-4 py-2 text-sm font-bold">твій маршрут</span></div>
+            <div className="mt-10 flex flex-wrap gap-3"><span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold">твій рівень</span><span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold">твоя ціль</span><span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold">твій маршрут</span></div>
             <Target className="absolute -bottom-12 -right-10 h-52 w-52 text-white/[.06]" strokeWidth={1} />
           </article>
-          <article className="rounded-[2.25rem] bg-red p-8 text-white lg:col-span-5 md:p-10"><span className="text-xs font-extrabold uppercase tracking-[.16em] text-white/60">02 · Практика</span><div className="mt-16 grid h-20 w-20 place-items-center rounded-full bg-white text-red"><MessageCircle size={34} /></div><h3 className="mt-7 text-3xl font-extrabold tracking-[-.04em]">70% уроку — говориш</h3><p className="mt-4 leading-relaxed text-white/75">Лексика й граматика одразу переходять у живу розмову — про те, що справді цікаво.</p></article>
+          <article className="rounded-[2.25rem] bg-red p-8 text-white lg:col-span-5 md:p-10"><span className="text-xs font-extrabold uppercase tracking-[.16em] text-white">02 · Практика</span><div className="mt-16 grid h-20 w-20 place-items-center rounded-full bg-white text-red"><MessageCircle size={34} aria-hidden="true" /></div><h3 className="mt-7 text-3xl font-extrabold tracking-[-.04em]">70% уроку — говориш</h3><p className="mt-4 leading-relaxed text-white">Лексика й граматика одразу переходять у живу розмову — про те, що справді цікаво.</p></article>
           <article className="rounded-[2.25rem] border border-ink/10 bg-sky p-8 lg:col-span-5 md:p-10"><span className="text-xs font-extrabold uppercase tracking-[.16em] text-blue">03 · Підтримка</span><h3 className="mt-7 text-3xl font-extrabold tracking-[-.04em]">Поруч, коли щось “не клеїться”</h3><p className="mt-4 leading-relaxed text-ink/60">Викладач пояснює зрозуміло, помічає ваші сильні сторони й допомагає пройти складні моменти без напруги.</p><div className="mt-9 flex -space-x-3" aria-label="Команда викладачів"><span className="grid h-12 w-12 place-items-center rounded-full border-4 border-sky bg-blue font-black text-white">A</span><span className="grid h-12 w-12 place-items-center rounded-full border-4 border-sky bg-red font-black text-white">+1</span></div></article>
           <article className="rounded-[2.25rem] border border-ink/10 bg-white p-8 lg:col-span-7 md:p-10"><span className="text-xs font-extrabold uppercase tracking-[.16em] text-blue">04 · Прогрес</span><div className="mt-6 grid items-end gap-6 sm:grid-cols-[1fr_auto]"><div><h3 className="text-3xl font-extrabold tracking-[-.04em]">Маленькі перемоги стають великою впевненістю</h3><p className="mt-4 leading-relaxed text-ink/60">Регулярно звіряємося з ціллю й показуємо, що вже змінилося.</p></div><div className="relative grid h-28 w-28 place-items-center rounded-full" style={{ background: 'conic-gradient(#1C5DCE 0 78%, #EAF2FF 78%)' }}><div className="grid h-[82px] w-[82px] place-items-center rounded-full bg-white text-2xl font-black text-blue">78%</div></div></div></article>
         </div>
@@ -384,7 +519,7 @@ function FAQ() {
     <section id="faq" className="bg-sky/60 py-24 md:py-32">
       <div className="container-page grid gap-12 lg:grid-cols-[.7fr_1.3fr]">
         <div><span className="eyebrow bg-white">FAQ</span><h2 className="section-title">Можливо, ти хотів це запитати</h2><p className="mt-6 text-ink/60">Не знайшли відповідь? Зателефонуйте — відповімо без складних скриптів.</p><a href="tel:+380663781316" className="mt-6 inline-flex items-center gap-2 font-extrabold text-blue"><Phone size={18} /> +38 (066) 378 13 16</a></div>
-        <div className="space-y-3">{faqs.map(([question, answer], index) => { const isOpen = active === index; return <div key={question} className="overflow-hidden rounded-3xl border border-ink/10 bg-white"><button type="button" className="flex min-h-[76px] w-full items-center justify-between gap-4 px-6 py-5 text-left font-extrabold md:px-7" onClick={() => setActive(isOpen ? null : index)} aria-expanded={isOpen} data-testid={`faq-${index}`}><span>{question}</span><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition ${isOpen ? 'rotate-180 bg-blue text-white' : 'bg-sky text-blue'}`}><ChevronDown size={18} /></span></button>{isOpen && <div className="px-6 pb-6 pr-16 leading-relaxed text-ink/60 md:px-7 md:pb-7" data-testid={`faq-answer-${index}`}>{answer}</div>}</div> })}</div>
+        <div className="space-y-3">{faqs.map(([question, answer], index) => { const isOpen = active === index; return <div key={question} className="overflow-hidden rounded-3xl border border-ink/10 bg-white"><button type="button" id={`faq-button-${index}`} className="flex min-h-[76px] w-full items-center justify-between gap-4 px-6 py-5 text-left font-extrabold md:px-7" onClick={() => setActive(isOpen ? null : index)} aria-expanded={isOpen} aria-controls={`faq-panel-${index}`} data-testid={`faq-${index}`}><span>{question}</span><span aria-hidden="true" className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition ${isOpen ? 'rotate-180 bg-blue text-white' : 'bg-sky text-blue'}`}><ChevronDown size={18} /></span></button>{isOpen && <div id={`faq-panel-${index}`} role="region" aria-labelledby={`faq-button-${index}`} className="px-6 pb-6 pr-16 leading-relaxed text-ink/70 md:px-7 md:pb-7" data-testid={`faq-answer-${index}`}>{answer}</div>}</div> })}</div>
       </div>
     </section>
   )
@@ -400,25 +535,38 @@ type FormState = {
   goal: string
   format: string
   website: string
+  company: string
+  startedAt: string
 }
 
-const emptyForm: FormState = {
-  studentType: 'adult', fullName: '', childName: '', childAge: '', contactPerson: '',
-  phone: '', goal: '', format: 'Не знаю — порадьте', website: '',
-}
+const createEmptyForm = (studentType: LeadAudience = 'adult'): FormState => ({
+  studentType, fullName: '', childName: '', childAge: '', contactPerson: '',
+  phone: '', goal: '', format: studentType === 'child' ? 'Заняття для дитини' : 'Не знаю — порадьте',
+  website: '', company: '', startedAt: String(Date.now()),
+})
 
 function Contact() {
   const formId = useId()
-  const [form, setForm] = useState<FormState>(emptyForm)
+  const [form, setForm] = useState<FormState>(() => createEmptyForm())
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
   const update = (key: keyof FormState, value: string) => setForm(old => ({ ...old, [key]: value }))
   const setStudentType = (studentType: FormState['studentType']) => {
     setError('')
     setStatus('')
     setForm(old => ({ ...old, studentType, format: studentType === 'child' ? 'Заняття для дитини' : 'Не знаю — порадьте' }))
   }
+  useEffect(() => {
+    const selectAudience = (event: Event) => {
+      const audience = (event as CustomEvent<LeadAudience>).detail
+      if (audience === 'adult' || audience === 'child') setStudentType(audience)
+    }
+    window.addEventListener('americana:select-audience', selectAudience)
+    return () => window.removeEventListener('americana:select-audience', selectAudience)
+  }, [])
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setStatus('')
     if (form.studentType === 'adult' && form.fullName.trim().length < 3) return setError('Будь ласка, вкажіть ім’я та прізвище.')
@@ -426,34 +574,43 @@ function Contact() {
     const age = Number(form.childAge)
     if (form.studentType === 'child' && (!Number.isInteger(age) || age < 1 || age > 17)) return setError('Будь ласка, вкажіть коректний вік дитини.')
     if (form.studentType === 'child' && form.contactPerson.trim().length < 2) return setError('Вкажіть, з ким із батьків або опікунів зв’язатися.')
-    if (form.phone.replace(/\D/g, '').length < 10) return setError('Перевірте, будь ласка, номер телефону.')
+    const phoneDigits = form.phone.replace(/\D/g, '')
+    const isUkrainianPhone = (phoneDigits.length === 12 && phoneDigits.startsWith('380')) || (phoneDigits.length === 10 && phoneDigits.startsWith('0'))
+    if (!isUkrainianPhone) return setError('Вкажіть український номер у форматі +380 або 0XX XXX XX XX.')
+    if (turnstileSiteKey && !turnstileToken) return setError('Підтвердіть, будь ласка, що ви не робот.')
     setSubmitting(true)
     try {
-      const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const response = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, turnstileToken }) })
       const payload = await response.json().catch(() => ({ message: '' })) as { message?: string }
       if (!response.ok) throw new Error(payload.message || 'Не вдалося надіслати заявку.')
       setStatus(payload.message || 'Заявку надіслано. Скоро ми зв’яжемося з вами.')
-      setForm({ ...emptyForm, studentType: form.studentType, format: form.studentType === 'child' ? 'Заняття для дитини' : 'Не знаю — порадьте' })
+      setForm(createEmptyForm(form.studentType))
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Не вдалося надіслати форму. Спробуйте ще раз або зателефонуйте нам.')
     } finally {
       setSubmitting(false)
+      if (turnstileSiteKey) {
+        setTurnstileToken('')
+        setTurnstileResetKey(key => key + 1)
+      }
     }
   }
   return (
-    <section id="contact" className="bg-red py-20 md:py-28">
+    <section id="contact" className="relative overflow-hidden bg-red py-20 md:py-28">
       <div className="container-page grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
-        <div className="text-white"><span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em]">Безкоштовне тестування</span><h2 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-[-.045em] md:text-6xl">Твоя англійська може початися сьогодні.</h2><p className="mt-6 max-w-lg text-lg leading-relaxed text-white/75">Залиш контакт — визначимо рівень і запропонуємо наступний крок. Для дітей підберемо програму відповідно до віку та цілі.</p><div className="mt-8 flex flex-wrap gap-5 text-sm font-bold"><span className="flex items-center gap-2"><Clock3 size={18} /> 15–20 хвилин</span><span className="flex items-center gap-2"><Check size={18} /> 0 грн</span></div></div>
-        <form onSubmit={submit} className="rounded-[2.25rem] bg-white p-6 shadow-soft md:p-9" noValidate data-testid="lead-form">
+        <div className="text-white"><span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-extrabold uppercase tracking-[.14em]">Безкоштовне тестування</span><h2 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-[-.045em] md:text-6xl">Твоя англійська може початися сьогодні.</h2><p className="mt-6 max-w-lg text-lg leading-relaxed text-white">Залиш контакт — визначимо рівень і запропонуємо наступний крок. Для дітей підберемо програму відповідно до віку та цілі.</p><div className="mt-8 flex flex-wrap gap-5 text-sm font-bold"><span className="flex items-center gap-2"><Clock3 size={18} aria-hidden="true" /> 15–20 хвилин</span><span className="flex items-center gap-2"><Check size={18} aria-hidden="true" /> 0 грн</span></div></div>
+        <form onSubmit={submit} className="rounded-[2.25rem] bg-white p-6 shadow-soft md:p-9" noValidate aria-busy={submitting} data-testid="lead-form">
           <fieldset><legend className="mb-3 text-sm font-extrabold">Для кого тестування?</legend><div className="grid grid-cols-2 gap-2 rounded-2xl bg-sky p-1.5"><button type="button" onClick={() => setStudentType('adult')} aria-pressed={form.studentType === 'adult'} className={`min-h-12 rounded-xl px-3 text-sm font-extrabold transition ${form.studentType === 'adult' ? 'bg-white text-blue shadow-sm' : 'text-ink/55 hover:text-ink'}`} data-testid="student-adult">Для дорослого</button><button type="button" onClick={() => setStudentType('child')} aria-pressed={form.studentType === 'child'} className={`min-h-12 rounded-xl px-3 text-sm font-extrabold transition ${form.studentType === 'child' ? 'bg-white text-blue shadow-sm' : 'text-ink/55 hover:text-ink'}`} data-testid="student-child">Для дитини</button></div></fieldset>
-          {form.studentType === 'adult' ? <label className="mt-5 block" htmlFor={`${formId}-full-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище</span><input id={`${formId}-full-name`} value={form.fullName} onChange={e => update('fullName', e.target.value)} placeholder="Наприклад: Анна Коваль" autoComplete="name" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-name" /></label> : <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_120px]"><label className="block" htmlFor={`${formId}-child-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище дитини</span><input id={`${formId}-child-name`} value={form.childName} onChange={e => update('childName', e.target.value)} placeholder="Наприклад: Марко Коваль" autoComplete="off" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-name" /></label><label className="block" htmlFor={`${formId}-child-age`}><span className="mb-2 block text-sm font-extrabold">Вік</span><input id={`${formId}-child-age`} type="number" min="1" max="17" inputMode="numeric" value={form.childAge} onChange={e => update('childAge', e.target.value)} placeholder="10" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-age" /></label></div>}
-          {form.studentType === 'child' && <label className="mt-5 block" htmlFor={`${formId}-contact-person`}><span className="mb-2 block text-sm font-extrabold">З ким зв’язатися?</span><input id={`${formId}-contact-person`} value={form.contactPerson} onChange={e => update('contactPerson', e.target.value)} placeholder="Наприклад: мама Олена" autoComplete="name" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-contact-person" /></label>}
-          <label className="mt-5 block" htmlFor={`${formId}-phone`}><span className="mb-2 block text-sm font-extrabold">{form.studentType === 'child' ? 'Контактний номер батьків' : 'Номер телефону'}</span><input id={`${formId}-phone`} type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="+38 (___) ___ __ __" autoComplete="tel" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-phone" /></label>
+          {form.studentType === 'adult' ? <label className="mt-5 block" htmlFor={`${formId}-full-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище</span><input id={`${formId}-full-name`} value={form.fullName} onChange={e => update('fullName', e.target.value)} placeholder="Наприклад: Анна Коваль" autoComplete="name" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-name" /></label> : <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_120px]"><label className="block" htmlFor={`${formId}-child-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище дитини</span><input id={`${formId}-child-name`} value={form.childName} onChange={e => update('childName', e.target.value)} placeholder="Наприклад: Марко Коваль" autoComplete="off" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-name" /></label><label className="block" htmlFor={`${formId}-child-age`}><span className="mb-2 block text-sm font-extrabold">Вік</span><input id={`${formId}-child-age`} type="number" min="1" max="17" inputMode="numeric" value={form.childAge} onChange={e => update('childAge', e.target.value)} placeholder="10" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-age" /></label></div>}
+          {form.studentType === 'child' && <label className="mt-5 block" htmlFor={`${formId}-contact-person`}><span className="mb-2 block text-sm font-extrabold">З ким зв’язатися?</span><input id={`${formId}-contact-person`} value={form.contactPerson} onChange={e => update('contactPerson', e.target.value)} placeholder="Наприклад: мама Олена" autoComplete="name" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-contact-person" /></label>}
+          <label className="mt-5 block" htmlFor={`${formId}-phone`}><span className="mb-2 block text-sm font-extrabold">{form.studentType === 'child' ? 'Контактний номер батьків' : 'Номер телефону'}</span><input id={`${formId}-phone`} type="tel" value={form.phone} onFocus={() => { if (!form.phone) update('phone', '+380') }} onChange={e => update('phone', e.target.value)} placeholder="+380 (__) ___ __ __" autoComplete="tel" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-phone" /></label>
           <label className="mt-5 block" htmlFor={`${formId}-format`}><span className="mb-2 block text-sm font-extrabold">Який формат цікавить?</span><select id={`${formId}-format`} value={form.format} onChange={e => update('format', e.target.value)} className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-format"><option>Не знаю — порадьте</option><option>Групові заняття</option><option>Індивідуальні заняття</option><option>Підготовка до НМТ</option><option>Заняття для дитини</option></select></label>
           <label className="mt-5 block" htmlFor={`${formId}-goal`}><span className="mb-2 block text-sm font-extrabold">Що хочете змінити у своїй англійській? <span className="font-medium text-ink/40">(необов’язково)</span></span><textarea id={`${formId}-goal`} value={form.goal} onChange={e => update('goal', e.target.value)} placeholder="Наприклад: хочу впевнено говорити у подорожах" rows={3} className="w-full resize-none rounded-2xl border border-ink/15 bg-paper p-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-goal" /></label>
           <label className="absolute -left-[9999px]" aria-hidden="true" htmlFor={`${formId}-website`}>Ваш сайт<input id={`${formId}-website`} tabIndex={-1} autoComplete="off" value={form.website} onChange={e => update('website', e.target.value)} /></label>
+          <label className="absolute -left-[9999px]" aria-hidden="true" htmlFor={`${formId}-company`}>Компанія<input id={`${formId}-company`} tabIndex={-1} autoComplete="off" value={form.company} onChange={e => update('company', e.target.value)} /></label>
+          <TurnstileWidget onToken={setTurnstileToken} resetKey={turnstileResetKey} />
           {error && <p role="alert" className="mt-4 rounded-xl bg-red/10 px-4 py-3 text-sm font-bold text-red" data-testid="form-error">{error}</p>}{status && <p role="status" className="mt-4 rounded-xl bg-sky px-4 py-3 text-sm font-bold text-blue" data-testid="form-status">{status}</p>}
-          <button type="submit" disabled={submitting} className="btn-primary mt-6 w-full disabled:cursor-wait disabled:opacity-60" data-testid="lead-submit">{submitting ? 'Надсилаємо…' : 'Записатись на тестування'} <Send size={18} /></button><p className="mt-4 text-center text-xs leading-relaxed text-ink/40">Надсилаючи форму, ви погоджуєтесь на обробку даних для зв’язку з вами.</p>
+          <button type="submit" disabled={submitting} className="btn-primary mt-6 w-full disabled:cursor-wait disabled:opacity-60" data-testid="lead-submit">{submitting ? 'Надсилаємо…' : 'Записатись на тестування'} <Send size={18} aria-hidden="true" /></button><p className="mt-4 text-center text-xs leading-relaxed text-ink/55">Надсилаючи форму, ви погоджуєтесь на обробку даних для зв’язку з вами.</p>
         </form>
       </div>
     </section>
@@ -463,7 +620,7 @@ function Contact() {
 function Footer() {
   return (
     <footer className="bg-[#061d43] py-14 text-white">
-        <div className="container-page"><div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4"><div><Logo inverse /><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/55">Міжнародний мовний центр у Чернівцях. Англійська для життя, навчання та нових можливостей.</p></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Навігація</h3><div className="mt-5 flex flex-col gap-3">{nav.map(([label, href]) => <a key={href} href={href} className="text-sm font-bold text-white/75 hover:text-white">{label}</a>)}</div></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Контакти</h3><div className="mt-5 space-y-4 text-sm font-bold text-white/75"><a href="tel:+380663781316" className="flex items-center gap-3 hover:text-white"><Phone size={18} /> +38 (066) 378 13 16</a><a href="mailto:amerchernivtsi@gmail.com" className="flex items-center gap-3 hover:text-white"><Send size={18} /> amerchernivtsi@gmail.com</a><a href="https://maps.google.com/?q=вул.+Ольги+Кобилянської+30,+Чернівці" target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-white"><MapPin size={18} className="mt-0.5 shrink-0" /> вул. О. Кобилянської, 30<br />Чернівці, Україна</a></div></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/40">Будьмо на зв’язку</h3><div className="mt-5 flex gap-2"><a href="https://www.instagram.com/americana_cv" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="Instagram" data-testid="instagram-link"><Instagram size={20} /></a><a href="https://www.tiktok.com/@americana_cv" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="TikTok" data-testid="tiktok-link"><TikTokIcon /></a><a href="https://www.facebook.com/americanaenglish/" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="Facebook" data-testid="facebook-link"><Facebook size={20} /></a></div></div></div><div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-7 text-xs font-semibold text-white/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Americana English. Усі права захищено.</p><a href="/public-agreement" className="hover:text-white" data-testid="public-agreement-link">Публічний договір</a></div></div>
+        <div className="container-page"><div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4"><div><Logo inverse /><p className="mt-5 max-w-xs text-sm leading-relaxed text-white/70">Міжнародний мовний центр у Чернівцях. Англійська для життя, навчання та нових можливостей.</p></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/70">Навігація</h3><nav className="mt-5 flex flex-col gap-3" aria-label="Навігація у підвалі">{nav.map(([label, href]) => <a key={href} href={href} className="text-sm font-bold text-white/80 hover:text-white">{label}</a>)}</nav></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/70">Контакти</h3><div className="mt-5 space-y-4 text-sm font-bold text-white/80"><a href="tel:+380663781316" className="flex items-center gap-3 hover:text-white"><Phone size={18} aria-hidden="true" /> +38 (066) 378 13 16</a><a href="mailto:amerchernivtsi@gmail.com" className="flex items-center gap-3 hover:text-white"><Send size={18} aria-hidden="true" /> amerchernivtsi@gmail.com</a><a href="https://maps.google.com/?q=вул.+Ольги+Кобилянської+30,+Чернівці" target="_blank" rel="noreferrer" className="flex items-start gap-3 hover:text-white" aria-label="Адреса Americana у Google Maps, відкриється в новій вкладці"><MapPin size={18} className="mt-0.5 shrink-0" aria-hidden="true" /> вул. О. Кобилянської, 30<br />Чернівці, Україна</a></div></div><div><h3 className="text-sm font-extrabold uppercase tracking-wider text-white/70">Будьмо на зв’язку</h3><div className="mt-5 flex gap-2"><a href="https://www.instagram.com/americana_cv" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="Instagram Americana, відкриється в новій вкладці" data-testid="instagram-link"><Instagram size={20} aria-hidden="true" /></a><a href="https://www.tiktok.com/@americana_cv" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="TikTok Americana, відкриється в новій вкладці" data-testid="tiktok-link"><TikTokIcon /></a><a href="https://www.facebook.com/americanaenglish/" target="_blank" rel="noreferrer" className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 transition hover:-translate-y-1 hover:bg-red" aria-label="Facebook Americana, відкриється в новій вкладці" data-testid="facebook-link"><Facebook size={20} aria-hidden="true" /></a></div></div></div><div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-7 text-xs font-semibold text-white/60 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Americana English. Усі права захищено.</p><a href="/public-agreement" className="hover:text-white" data-testid="public-agreement-link">Публічний договір</a></div></div>
     </footer>
   )
 }
@@ -472,5 +629,13 @@ export default function App() {
   const currentPath = window.location.pathname.replace(/\/+$/, '') || '/'
   if (currentPath === '/public-agreement') return <PublicAgreement />
 
-  return <><Header /><Hero /><TrustStrip /><Intro /><Formats /><Schedule /><Prices /><Method /><Journey /><Credentials /><FAQ /><Contact /><Footer /><a href="tel:+380663781316" className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-blue text-white shadow-lg shadow-blue/30 transition hover:-translate-y-1 md:hidden" aria-label="Зателефонувати" data-testid="floating-call"><Phone size={22} /></a></>
+  return <>
+    <a href="#main-content" className="skip-link" data-testid="skip-link">Перейти до основного вмісту</a>
+    <Header />
+    <main id="main-content" tabIndex={-1}>
+      <Hero /><TrustStrip /><Intro /><Formats /><Schedule /><Prices /><Method /><Journey /><Credentials /><FAQ /><Contact />
+    </main>
+    <Footer />
+    <a href="tel:+380663781316" className="fixed bottom-5 right-5 z-40 grid h-14 w-14 place-items-center rounded-full bg-blue text-white shadow-lg shadow-blue/30 transition hover:-translate-y-1 md:hidden" aria-label="Зателефонувати до Americana" data-testid="floating-call"><Phone size={22} aria-hidden="true" /></a>
+  </>
 }

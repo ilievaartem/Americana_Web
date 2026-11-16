@@ -10,7 +10,9 @@ export function validateLead(input: unknown): { data?: LeadPayload; error?: stri
   if (!studentType) return { error: 'Оберіть, для кого тестування.' }
 
   const phone = clean(body.phone, 32)
-  if (phone.replace(/\D/g, '').length < 10) return { error: 'Перевірте номер телефону.' }
+  const phoneDigits = phone.replace(/\D/g, '')
+  const isUkrainianPhone = (phoneDigits.length === 12 && phoneDigits.startsWith('380')) || (phoneDigits.length === 10 && phoneDigits.startsWith('0'))
+  if (!isUkrainianPhone) return { error: 'Вкажіть український номер у форматі +380 або 0XX XXX XX XX.' }
 
   const data: LeadPayload = {
     studentType,
@@ -18,6 +20,9 @@ export function validateLead(input: unknown): { data?: LeadPayload; error?: stri
     format: clean(body.format, 80) || 'Не вказано',
     goal: clean(body.goal, 1000),
     website: clean(body.website, 200),
+    company: clean(body.company, 200),
+    startedAt: clean(body.startedAt, 32),
+    turnstileToken: clean(body.turnstileToken, 2048),
   }
 
   if (studentType === 'adult') {

@@ -7,7 +7,7 @@ export default {
         ink: '#092B62',
         blue: '#1C5DCE',
         sky: '#EAF2FF',
-        red: '#EF4444',
+        red: '#D93636',
         paper: '#FCFDFE',
       },
       fontFamily: { sans: ['Manrope Variable', 'system-ui', 'sans-serif'] },

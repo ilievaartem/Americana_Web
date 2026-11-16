@@ -10,4 +10,7 @@ export interface LeadPayload {
   format: string
   goal?: string
   website?: string
+  company?: string
+  startedAt?: string
+  turnstileToken?: string
 }

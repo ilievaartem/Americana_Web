@@ -13,6 +13,20 @@ export default async function handler(request: Request) {
     )
   }
 
+  if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
+    return Response.json(
+      { message: 'Потрібен формат application/json.' },
+      { status: 415, headers: jsonHeaders },
+    )
+  }
+  const contentLength = Number(request.headers.get('content-length') || 0)
+  if (contentLength > 12_000) {
+    return Response.json(
+      { message: 'Запит завеликий.' },
+      { status: 413, headers: jsonHeaders },
+    )
+  }
+
   let input: unknown
   try {
     input = await request.json()
@@ -23,7 +37,8 @@ export default async function handler(request: Request) {
     )
   }
 
-  const result = await submitLead(input)
+  const clientIp = request.headers.get('x-nf-client-connection-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const result = await submitLead(input, { clientIp: clientIp || undefined })
   return Response.json(
     { message: result.message },
     { status: result.status, headers: jsonHeaders },
@@ -34,8 +49,8 @@ export const config = {
   path: '/api/leads',
   method: 'POST',
   rateLimit: {
-    windowLimit: 5,
-    windowSize: 60,
+    windowLimit: 3,
+    windowSize: 600,
     aggregateBy: ['ip', 'domain'],
   },
 }

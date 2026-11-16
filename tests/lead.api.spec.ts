@@ -9,6 +9,8 @@ test('accepts a valid adult testing request', async ({ request }) => {
       format: 'Групові заняття',
       goal: 'Вільніше говорити',
       website: '',
+      company: '',
+      startedAt: String(Date.now() - 5_000),
     },
   })
   expect(response.status()).toBe(201)
@@ -24,6 +26,7 @@ test('validates all child contact fields', async ({ request }) => {
       contactPerson: '',
       phone: '+38 066 111 22 33',
       format: 'Заняття для дитини',
+      startedAt: String(Date.now() - 5_000),
     },
   })
   expect(response.status()).toBe(400)

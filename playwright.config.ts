@@ -11,7 +11,7 @@ export default defineConfig({
       command: 'npm.cmd run build && npm.cmd run start:api',
       url: 'http://127.0.0.1:3002/api/health',
       reuseExistingServer: true,
-      env: { EMAIL_TRANSPORT: 'mock', PORT: '3002' },
+      env: { EMAIL_TRANSPORT: 'mock', PORT: '3002', TURNSTILE_SECRET_KEY: '' },
     },
     {
       command: 'npm.cmd run dev:web -- --host 127.0.0.1 --port 4174 --strictPort',

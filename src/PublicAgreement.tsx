@@ -103,10 +103,11 @@ export default function PublicAgreement() {
 
   return (
     <div id="agreement-top" className="min-h-screen bg-sky/45 text-ink">
+      <a href="#agreement-content" className="skip-link">Перейти до тексту договору</a>
       <header className="sticky top-0 z-40 border-b border-ink/10 bg-white/95 backdrop-blur-xl">
         <div className="container-page flex min-h-[76px] items-center justify-between gap-4">
           <a href="/" className="inline-flex items-center" aria-label="Americana — на головну" data-testid="agreement-logo">
-            <img src="/assets/americana-logo.png" alt="Americana" className="h-14 w-auto max-w-[210px] object-contain md:h-16" width="249" height="96" />
+            <img src="/assets/americana-logo.png" alt="Логотип мовного центру Americana English" className="h-14 w-auto max-w-[210px] object-contain md:h-16" width="249" height="96" />
           </a>
           <div className="flex items-center gap-3">
             <a href="tel:+380663781316" className="hidden items-center gap-2 text-sm font-extrabold sm:inline-flex"><Phone size={17} /> +38 (066) 378 13 16</a>
@@ -115,7 +116,7 @@ export default function PublicAgreement() {
         </div>
       </header>
 
-      <main>
+      <main id="agreement-content" tabIndex={-1}>
         <section className="relative overflow-hidden bg-ink py-16 text-white md:py-24">
           <div className="absolute -right-28 -top-32 h-96 w-96 rounded-full bg-blue/70" />
           <div className="absolute -bottom-36 -left-28 h-72 w-72 rounded-full bg-red/80" />

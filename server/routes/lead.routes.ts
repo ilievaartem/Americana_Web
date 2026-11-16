@@ -7,11 +7,11 @@ export const leadRouter = Router()
 leadRouter.post(
   '/',
   rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 5,
+    windowMs: 10 * 60 * 1000,
+    limit: 3,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { message: 'Забагато спроб. Будь ласка, зачекайте 15 хвилин або зателефонуйте нам.' },
+    message: { message: 'Забагато спроб. Будь ласка, зачекайте 10 хвилин або зателефонуйте нам.' },
   }),
   createLead,
 )
