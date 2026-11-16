@@ -5,6 +5,7 @@ test('accepts a valid adult testing request', async ({ request }) => {
     data: {
       studentType: 'adult',
       fullName: 'Тестова Людина',
+      phoneCountry: 'UA',
       phone: '+38 066 111 22 33',
       format: 'Групові заняття',
       goal: 'Вільніше говорити',
@@ -24,6 +25,7 @@ test('validates all child contact fields', async ({ request }) => {
       childName: 'Марко Коваль',
       childAge: '10',
       contactPerson: '',
+      phoneCountry: 'UA',
       phone: '+38 066 111 22 33',
       format: 'Заняття для дитини',
       startedAt: String(Date.now() - 5_000),

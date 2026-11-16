@@ -13,7 +13,26 @@ test('validates required lead fields', async ({ page }) => {
   await expect(page.getByTestId('form-error')).toContainText('ім’я')
   await page.getByTestId('lead-name').fill('Оля')
   await page.getByTestId('lead-submit').click()
-  await expect(page.getByTestId('form-error')).toContainText('український номер')
+  await expect(page.getByTestId('form-error')).toContainText('коректний номер')
+})
+
+test('allows international phone countries but excludes Russia', async ({ page }) => {
+  await page.route('**/api/leads', async route => {
+    const payload = route.request().postDataJSON() as { phoneCountry: string; phone: string }
+    expect(payload.phoneCountry).toBe('PL')
+    expect(payload.phone).toBe('512 345 678')
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ message: 'Заявку прийнято.' }) })
+  })
+  await page.goto('/#contact')
+  const countrySelect = page.getByTestId('lead-phone-country')
+  await expect(countrySelect.locator('option[value="UA"]')).toContainText('Україна (+380)')
+  await expect(countrySelect.locator('option[value="PL"]')).toContainText('Польща (+48)')
+  await expect(countrySelect.locator('option[value="RU"]')).toHaveCount(0)
+  await countrySelect.selectOption('PL')
+  await page.getByTestId('lead-name').fill('Анна Коваль')
+  await page.getByTestId('lead-phone').fill('512 345 678')
+  await page.getByTestId('lead-submit').click()
+  await expect(page.getByTestId('form-status')).toContainText('Заявку прийнято')
 })
 
 test('shows the child-specific testing fields', async ({ page }) => {
@@ -79,6 +98,7 @@ test('aligns price actions and reveals the schedule action on hover', async ({ p
 
   await page.goto('/#schedule')
   await page.getByTestId('schedule-adult-tab').click()
+  await page.mouse.move(0, 0)
   const slot = page.getByTestId('schedule-slot-adult').first()
   const action = slot.getByText('Записатися', { exact: true })
   await expect(action).toHaveCSS('opacity', '0')

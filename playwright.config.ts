@@ -17,7 +17,7 @@ export default defineConfig({
       command: 'npm.cmd run dev:web -- --host 127.0.0.1 --port 4174 --strictPort',
       url: 'http://127.0.0.1:4174',
       reuseExistingServer: true,
-      env: { VITE_API_PORT: '3002' },
+      env: { VITE_API_PORT: '3002', VITE_TURNSTILE_SITE_KEY: '' },
     },
   ],
   projects: [

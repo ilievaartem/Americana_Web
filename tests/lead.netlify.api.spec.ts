@@ -16,6 +16,7 @@ test('Netlify function accepts a valid testing request', async () => {
     body: JSON.stringify({
       studentType: 'adult',
       fullName: 'Тестова Людина',
+      phoneCountry: 'UA',
       phone: '+38 066 111 22 33',
       format: 'Групові заняття',
       goal: 'Вільніше говорити',
@@ -34,7 +35,7 @@ test('Netlify function validates data and rejects unsupported methods', async ()
   const invalidResponse = await handler(new Request('https://example.netlify.app/api/leads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ studentType: 'adult', fullName: '', phone: '', startedAt: String(Date.now() - 5_000) }),
+    body: JSON.stringify({ studentType: 'adult', fullName: '', phoneCountry: 'UA', phone: '', startedAt: String(Date.now() - 5_000) }),
   }))
   const methodResponse = await handler(new Request('https://example.netlify.app/api/leads'))
 
@@ -43,7 +44,25 @@ test('Netlify function validates data and rejects unsupported methods', async ()
   expect(config.path).toBe('/api/leads')
 })
 
-test('Netlify function blocks non-Ukrainian phone numbers', async () => {
+test('Netlify function accepts a valid international phone number', async () => {
+  const { default: handler } = await loadHandler()
+  const response = await handler(new Request('https://example.netlify.app/api/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      studentType: 'adult',
+      fullName: 'Anna Kowalska',
+      phoneCountry: 'PL',
+      phone: '+48 512 345 678',
+      format: 'Групові заняття',
+      startedAt: String(Date.now() - 5_000),
+    }),
+  }))
+
+  expect(response.status).toBe(201)
+})
+
+test('Netlify function blocks Russian numbers even when another country is submitted', async () => {
   const { default: handler } = await loadHandler()
   const response = await handler(new Request('https://example.netlify.app/api/leads', {
     method: 'POST',
@@ -51,6 +70,7 @@ test('Netlify function blocks non-Ukrainian phone numbers', async () => {
     body: JSON.stringify({
       studentType: 'adult',
       fullName: 'Spam Bot',
+      phoneCountry: 'KZ',
       phone: '+7 916 402 98 93',
       format: 'Групові заняття',
       startedAt: String(Date.now() - 5_000),
@@ -58,7 +78,7 @@ test('Netlify function blocks non-Ukrainian phone numbers', async () => {
   }))
 
   expect(response.status).toBe(400)
-  await expect(response.json()).resolves.toMatchObject({ message: expect.stringContaining('український номер') })
+  await expect(response.json()).resolves.toMatchObject({ message: expect.stringContaining('Росії') })
 })
 
 test('Netlify function silently ignores an automated submission', async () => {
@@ -69,6 +89,7 @@ test('Netlify function silently ignores an automated submission', async () => {
     body: JSON.stringify({
       studentType: 'adult',
       fullName: 'Fast Bot',
+      phoneCountry: 'UA',
       phone: '+380661112233',
       format: 'Групові заняття',
       startedAt: String(Date.now()),

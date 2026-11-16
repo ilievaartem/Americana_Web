@@ -30,10 +30,12 @@ export async function verifyEmailTransport() {
 export async function sendLeadEmail(lead: LeadPayload) {
   const isChild = lead.studentType === 'child'
   const student = (isChild ? lead.childName : lead.fullName) || 'Новий студент'
+  const phoneCountry = new Intl.DisplayNames(['uk'], { type: 'region' }).of(lead.phoneCountry) || lead.phoneCountry
   const rows: Array<[string, string]> = [
     ['Тестування для', isChild ? 'Дитини' : 'Дорослого'],
     [isChild ? 'Дитина' : 'Ім’я та прізвище', student],
     ...(isChild ? [['Вік дитини', lead.childAge || 'Не вказано'], ['З ким зв’язатися', lead.contactPerson || 'Не вказано']] as Array<[string, string]> : []),
+    ['Країна номера', phoneCountry],
     ['Контактний номер', lead.phone],
     ['Формат', lead.format],
     ['Мета / коментар', lead.goal || 'Не вказано'],

@@ -1,4 +1,5 @@
 import type { LeadPayload } from '../types/lead.js'
+import { isSupportedCountry, parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js'
 
 const clean = (value: unknown, maxLength = 500) =>
   typeof value === 'string' ? value.replace(/[\r\n]+/g, ' ').trim().slice(0, maxLength) : ''
@@ -9,14 +10,24 @@ export function validateLead(input: unknown): { data?: LeadPayload; error?: stri
   const studentType = body.studentType === 'child' ? 'child' : body.studentType === 'adult' ? 'adult' : null
   if (!studentType) return { error: 'Оберіть, для кого тестування.' }
 
-  const phone = clean(body.phone, 32)
-  const phoneDigits = phone.replace(/\D/g, '')
-  const isUkrainianPhone = (phoneDigits.length === 12 && phoneDigits.startsWith('380')) || (phoneDigits.length === 10 && phoneDigits.startsWith('0'))
-  if (!isUkrainianPhone) return { error: 'Вкажіть український номер у форматі +380 або 0XX XXX XX XX.' }
+  const rawPhoneCountry = clean(body.phoneCountry, 2).toUpperCase()
+  if (!isSupportedCountry(rawPhoneCountry) || rawPhoneCountry === 'RU') {
+    return { error: rawPhoneCountry === 'RU' ? 'Номери Росії не підтримуються.' : 'Оберіть країну номера телефону.' }
+  }
+  const phoneCountry = rawPhoneCountry as CountryCode
+  const rawPhone = clean(body.phone, 32)
+  const parsedPhone = rawPhone.startsWith('+')
+    ? parsePhoneNumberFromString(rawPhone)
+    : parsePhoneNumberFromString(rawPhone, phoneCountry)
+  if (parsedPhone?.country === 'RU') return { error: 'Номери Росії не підтримуються.' }
+  if (!parsedPhone?.isValid() || parsedPhone.country !== phoneCountry) {
+    return { error: 'Вкажіть коректний номер для вибраної країни.' }
+  }
 
   const data: LeadPayload = {
     studentType,
-    phone,
+    phoneCountry,
+    phone: parsedPhone.number,
     format: clean(body.format, 80) || 'Не вказано',
     goal: clean(body.goal, 1000),
     website: clean(body.website, 200),

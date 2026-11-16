@@ -4,7 +4,27 @@ import {
   Facebook, GraduationCap, Instagram, Languages, MapPin, Menu, MessageCircle,
   Phone, Play, Send, Sparkles, Star, Target, Users, X, Zap,
 } from 'lucide-react'
+import {
+  getCountries,
+  getCountryCallingCode,
+  parsePhoneNumberFromString,
+  type CountryCode,
+} from 'libphonenumber-js'
 import PublicAgreement from './PublicAgreement'
+
+const countryNames = new Intl.DisplayNames(['uk'], { type: 'region' })
+const phoneCountries = getCountries()
+  .filter(country => country !== 'RU')
+  .map(country => ({
+    code: country,
+    name: countryNames.of(country) || country,
+    callingCode: getCountryCallingCode(country),
+  }))
+  .sort((first, second) => {
+    if (first.code === 'UA') return -1
+    if (second.code === 'UA') return 1
+    return first.name.localeCompare(second.name, 'uk')
+  })
 
 const nav = [
   ['Формати', '#formats'], ['Розклад', '#schedule'], ['Ціни', '#prices'], ['Як навчаємо', '#method'], ['Про нас', '#about'], ['FAQ', '#faq'],
@@ -531,6 +551,7 @@ type FormState = {
   childName: string
   childAge: string
   contactPerson: string
+  phoneCountry: CountryCode
   phone: string
   goal: string
   format: string
@@ -541,7 +562,7 @@ type FormState = {
 
 const createEmptyForm = (studentType: LeadAudience = 'adult'): FormState => ({
   studentType, fullName: '', childName: '', childAge: '', contactPerson: '',
-  phone: '', goal: '', format: studentType === 'child' ? 'Заняття для дитини' : 'Не знаю — порадьте',
+  phoneCountry: 'UA', phone: '', goal: '', format: studentType === 'child' ? 'Заняття для дитини' : 'Не знаю — порадьте',
   website: '', company: '', startedAt: String(Date.now()),
 })
 
@@ -574,9 +595,12 @@ function Contact() {
     const age = Number(form.childAge)
     if (form.studentType === 'child' && (!Number.isInteger(age) || age < 1 || age > 17)) return setError('Будь ласка, вкажіть коректний вік дитини.')
     if (form.studentType === 'child' && form.contactPerson.trim().length < 2) return setError('Вкажіть, з ким із батьків або опікунів зв’язатися.')
-    const phoneDigits = form.phone.replace(/\D/g, '')
-    const isUkrainianPhone = (phoneDigits.length === 12 && phoneDigits.startsWith('380')) || (phoneDigits.length === 10 && phoneDigits.startsWith('0'))
-    if (!isUkrainianPhone) return setError('Вкажіть український номер у форматі +380 або 0XX XXX XX XX.')
+    const parsedPhone = form.phone.trim().startsWith('+')
+      ? parsePhoneNumberFromString(form.phone)
+      : parsePhoneNumberFromString(form.phone, form.phoneCountry)
+    if (!parsedPhone?.isValid() || parsedPhone.country !== form.phoneCountry) {
+      return setError('Вкажіть коректний номер для вибраної країни.')
+    }
     if (turnstileSiteKey && !turnstileToken) return setError('Підтвердіть, будь ласка, що ви не робот.')
     setSubmitting(true)
     try {
@@ -603,7 +627,43 @@ function Contact() {
           <fieldset><legend className="mb-3 text-sm font-extrabold">Для кого тестування?</legend><div className="grid grid-cols-2 gap-2 rounded-2xl bg-sky p-1.5"><button type="button" onClick={() => setStudentType('adult')} aria-pressed={form.studentType === 'adult'} className={`min-h-12 rounded-xl px-3 text-sm font-extrabold transition ${form.studentType === 'adult' ? 'bg-white text-blue shadow-sm' : 'text-ink/55 hover:text-ink'}`} data-testid="student-adult">Для дорослого</button><button type="button" onClick={() => setStudentType('child')} aria-pressed={form.studentType === 'child'} className={`min-h-12 rounded-xl px-3 text-sm font-extrabold transition ${form.studentType === 'child' ? 'bg-white text-blue shadow-sm' : 'text-ink/55 hover:text-ink'}`} data-testid="student-child">Для дитини</button></div></fieldset>
           {form.studentType === 'adult' ? <label className="mt-5 block" htmlFor={`${formId}-full-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище</span><input id={`${formId}-full-name`} value={form.fullName} onChange={e => update('fullName', e.target.value)} placeholder="Наприклад: Анна Коваль" autoComplete="name" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-name" /></label> : <div className="mt-5 grid gap-5 sm:grid-cols-[1fr_120px]"><label className="block" htmlFor={`${formId}-child-name`}><span className="mb-2 block text-sm font-extrabold">Ім’я та прізвище дитини</span><input id={`${formId}-child-name`} value={form.childName} onChange={e => update('childName', e.target.value)} placeholder="Наприклад: Марко Коваль" autoComplete="off" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-name" /></label><label className="block" htmlFor={`${formId}-child-age`}><span className="mb-2 block text-sm font-extrabold">Вік</span><input id={`${formId}-child-age`} type="number" min="1" max="17" inputMode="numeric" value={form.childAge} onChange={e => update('childAge', e.target.value)} placeholder="10" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-child-age" /></label></div>}
           {form.studentType === 'child' && <label className="mt-5 block" htmlFor={`${formId}-contact-person`}><span className="mb-2 block text-sm font-extrabold">З ким зв’язатися?</span><input id={`${formId}-contact-person`} value={form.contactPerson} onChange={e => update('contactPerson', e.target.value)} placeholder="Наприклад: мама Олена" autoComplete="name" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-contact-person" /></label>}
-          <label className="mt-5 block" htmlFor={`${formId}-phone`}><span className="mb-2 block text-sm font-extrabold">{form.studentType === 'child' ? 'Контактний номер батьків' : 'Номер телефону'}</span><input id={`${formId}-phone`} type="tel" value={form.phone} onFocus={() => { if (!form.phone) update('phone', '+380') }} onChange={e => update('phone', e.target.value)} placeholder="+380 (__) ___ __ __" autoComplete="tel" required aria-required="true" className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-phone" /></label>
+          <fieldset className="mt-5">
+            <legend className="mb-2 text-sm font-extrabold">{form.studentType === 'child' ? 'Контактний номер батьків' : 'Номер телефону'}</legend>
+            <div className="grid gap-3 sm:grid-cols-[minmax(220px,0.9fr)_1.1fr]">
+              <label className="block" htmlFor={`${formId}-phone-country`}>
+                <span className="sr-only">Країна номера телефону</span>
+                <select
+                  id={`${formId}-phone-country`}
+                  value={form.phoneCountry}
+                  onChange={event => update('phoneCountry', event.target.value)}
+                  aria-label="Країна номера телефону"
+                  className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10"
+                  data-testid="lead-phone-country"
+                >
+                  {phoneCountries.map(country => (
+                    <option key={country.code} value={country.code}>{country.name} (+{country.callingCode})</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block" htmlFor={`${formId}-phone`}>
+                <span className="sr-only">Номер телефону</span>
+                <input
+                  id={`${formId}-phone`}
+                  type="tel"
+                  inputMode="tel"
+                  value={form.phone}
+                  onChange={event => update('phone', event.target.value)}
+                  placeholder={`Номер без +${getCountryCallingCode(form.phoneCountry)}`}
+                  autoComplete="tel-national"
+                  required
+                  aria-required="true"
+                  className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10"
+                  data-testid="lead-phone"
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-xs font-medium text-ink/55">Оберіть країну та введіть номер без її міжнародного коду.</p>
+          </fieldset>
           <label className="mt-5 block" htmlFor={`${formId}-format`}><span className="mb-2 block text-sm font-extrabold">Який формат цікавить?</span><select id={`${formId}-format`} value={form.format} onChange={e => update('format', e.target.value)} className="h-14 w-full rounded-2xl border border-ink/15 bg-paper px-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-format"><option>Не знаю — порадьте</option><option>Групові заняття</option><option>Індивідуальні заняття</option><option>Підготовка до НМТ</option><option>Заняття для дитини</option></select></label>
           <label className="mt-5 block" htmlFor={`${formId}-goal`}><span className="mb-2 block text-sm font-extrabold">Що хочете змінити у своїй англійській? <span className="font-medium text-ink/40">(необов’язково)</span></span><textarea id={`${formId}-goal`} value={form.goal} onChange={e => update('goal', e.target.value)} placeholder="Наприклад: хочу впевнено говорити у подорожах" rows={3} className="w-full resize-none rounded-2xl border border-ink/15 bg-paper p-4 outline-none transition focus:border-blue focus:ring-4 focus:ring-blue/10" data-testid="lead-goal" /></label>
           <label className="absolute -left-[9999px]" aria-hidden="true" htmlFor={`${formId}-website`}>Ваш сайт<input id={`${formId}-website`} tabIndex={-1} autoComplete="off" value={form.website} onChange={e => update('website', e.target.value)} /></label>
